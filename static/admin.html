@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 商家信息查询</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        h1 { font-size: 20px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-weight: 600; }
+        td { padding: 8px 12px; border-bottom: 1px solid var(--gray-100); }
+        select { padding: 4px 8px; border: 1px solid var(--gray-300); border-radius: 4px; }
+        .tier-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .tier-admin { background: #fee2e2; color: #dc2626; }
+        .tier-premium { background: #dbeafe; color: #2563eb; }
+        .tier-free { background: var(--gray-100); color: var(--gray-600); }
+        #loginForm { max-width: 300px; margin: 60px auto; }
+        #loginForm input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius); }
+        #loginForm .btn { width: 100%; }
+    </style>
+</head>
+<body>
+<div id="loginForm" style="display:block">
+    <h1>管理员登录</h1>
+    <input type="text" id="adminUser" placeholder="用户名 (admin)">
+    <input type="password" id="adminPass" placeholder="密码 (admin123456)">
+    <button class="btn btn-primary" onclick="adminLogin()">登录</button>
+    <p style="font-size:12px;color:var(--gray-400);margin-top:8px;text-align:center">默认账号 admin / admin123456</p>
+</div>
+
+<div id="adminPanel" style="display:none" class="container">
+    <h1>📊 用户管理</h1>
+    <table>
+        <thead><tr><th>ID</th><th>用户名</th><th>等级</th><th>今日搜索</th><th>操作</th></tr></thead>
+        <tbody id="userTable"></tbody>
+    </table>
+    <p style="margin-top:12px;font-size:12px;color:var(--gray-400)">选择会员等级后点「保存」即可开通</p>
+    <a href="/" style="font-size:12px;color:var(--primary)">返回首页</a>
+</div>
+
+<script>
+const API = '';
+let token = '';
+
+async function adminLogin() {
+    const username = document.getElementById('adminUser').value;
+    const password = document.getElementById('adminPass').value;
+    const res = await fetch(API + '/api/auth/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if (data.success) {
+        token = data.token;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        loadUsers();
+    } else {
+        alert('登录失败: ' + (data.error || ''));
+    }
+}
+
+async function loadUsers() {
+    const res = await fetch(API + '/api/admin/users', {
+        headers: {'Authorization': 'Bearer ' + token}
+    });
+    const data = await res.json();
+    if (!data.success) { alert('加载失败'); return; }
+    const tbody = document.getElementById('userTable');
+    tbody.innerHTML = data.users.map(u => `
+        <tr>
+            <td>${u.id}</td>
+            <td>${u.username}</td>
+            <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
+            <td>${u.today_searches}</td>
+            <td>
+                <select id="tier_${u.id}">
+                    <option value="free" ${u.tier==='free'?'selected':''}>免费</option>
+                    <option value="premium" ${u.tier==='premium'?'selected':''}>会员</option>
+                    <option value="enterprise" ${u.tier==='enterprise'?'selected':''}>企业</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="saveTier(${u.id},'${u.username}')">保存</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveTier(id, username) {
+    const tier = document.getElementById('tier_' + id).value;
+    const res = await fetch(API + '/api/admin/set-tier', {
+        method: 'POST', headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + token},
+        body: JSON.stringify({username, tier})
+    });
+    const data = await res.json();
+    if (data.success) {
+        alert('✅ ' + data.message);
+        loadUsers();
+    } else {
+        alert('❌ ' + (data.error || ''));
+    }
+}
+
+async function savePaymentConfig() {
+    const data = {
+        wechat_id: document.getElementById('pmtWechat').value,
+        alipay_account: document.getElementById('pmtAlipay').value,
+        qr_code_url: document.getElementById('pmtQr').value,
+        price: document.getElementById('pmtPrice').value || '99',
+    };
+    const res = await fetch('/api/admin/payment-config', {
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    alert(r.success ? '✅ 保存成功' : '❌ ' + (r.error||''));
+}
+
+async function loadPaymentConfig() {
+    const res = await fetch('/api/payment/config');
+    const d = await res.json();
+    if (d.success && d.config) {
+        document.getElementById('pmtWechat').value = d.config.wechat_id || '';
+        document.getElementById('pmtAlipay').value = d.config.alipay_account || '';
+        document.getElementById('pmtQr').value = d.config.qr_code_url || '';
+        document.getElementById('pmtPrice').value = d.config.price || '99';
+    }
+}
+
+async function loadPendingPayments() {
+    const res = await fetch('/api/admin/payments', {
+        headers: {'Authorization':'Bearer '+token}
+    });
+    const d = await res.json();
+    if (!d.success) return;
+    const count = document.getElementById('pendingCount');
+    if (count) count.textContent = d.payments.length;
+    
+    const div = document.getElementById('pendingPayments');
+    if (!d.payments.length) { div.innerHTML = '<p style="font-size:13px;color:var(--gray-400)">暂无待处理付款</p>'; return; }
+    div.innerHTML = d.payments.map(p => '<div style="padding:8px;border:1px solid var(--gray-200);border-radius:4px;margin-bottom:8px;font-size:13px">' +
+        '👤 ' + p.username + ' | ¥' + p.amount + ' | 📱 ' + (p.contact||'-') + ' | ⏰ ' + (p.created_at||'') +
+        ' <button class="btn btn-sm btn-success" onclick="confirmPay(' + p.id + ','' + p.username + '')">确认并升级</button></div>'
+    ).join('');
+}
+
+async function confirmPay(id, username) {
+    const res = await fetch('/api/admin/payments/confirm', {
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body: JSON.stringify({id, username, tier:'premium'})
+    });
+    const r = await res.json();
+    if (r.success) { alert('✅ ' + r.message); loadPendingPayments(); loadUsers(); }
+    else alert('❌ ' + (r.error||''));
+}
+
+// Override adminLogin to also load config and payments
+const origLogin = adminLogin;
+adminLogin = async function() {
+    await origLogin();
+    loadPaymentConfig();
+    loadPendingPayments();
+};
+</script>
+</body>
+</html>

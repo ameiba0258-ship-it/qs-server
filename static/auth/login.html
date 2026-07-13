@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 商家信息查询</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .auth-container { max-width: 400px; margin: 60px auto; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .auth-container h1 { font-size: 20px; margin-bottom: 20px; text-align: center; }
+        .auth-container .form-group { margin-bottom: 14px; }
+        .auth-container label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--gray-600); }
+        .auth-container input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; }
+        .auth-container .btn { width: 100%; justify-content: center; padding: 10px; }
+        .auth-container p { text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 14px; }
+        .auth-container .tier-info { background: var(--gray-50); padding: 12px; border-radius: 6px; font-size: 12px; margin: 14px 0; }
+        .auth-container .tier-info strong { color: var(--primary); }
+    </style>
+</head>
+<body>
+<div class="auth-container">
+    <h1>📍 商家信息查询</h1>
+    <div id="authForm">
+        <div class="form-group">
+            <label>用户名</label>
+            <input type="text" id="authUsername" placeholder="输入用户名" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="authPassword" placeholder="输入密码" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" id="authBtn" onclick="doLogin()">登录</button>
+        <p><a href="javascript:toggleAuth()" id="authToggle">没有账号？去注册</a></p>
+        <div class="tier-info">
+            💡 免费版：每日 <strong>50次</strong> 搜索 · <strong>3次</strong> 导出<br>
+            ⋯⋯⋯⋯⋯⋯⋯⋯<br>
+            🏆 会员版：每日 <strong>5000次</strong> 搜索 · <strong>不限</strong> 导出 · 深度搜索
+        </div>
+    </div>
+</div>
+<script>
+let isLogin = true;
+function toggleAuth() {
+    isLogin = !isLogin;
+    document.getElementById('authBtn').textContent = isLogin ? '登录' : '注册';
+    document.getElementById('authToggle').textContent = isLogin ? '没有账号？去注册' : '已有账号？去登录';
+}
+
+async function doLogin() {
+    const username = document.getElementById('authUsername').value.trim();
+    const password = document.getElementById('authPassword').value.trim();
+    if (!username || !password) { alert('请填写用户名和密码'); return; }
+
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            localStorage.setItem('qs_token', data.token);
+            localStorage.setItem('qs_user', JSON.stringify(data));
+            window.location.href = '/';
+        } else {
+            alert(data.error || '操作失败');
+        }
+    } catch (e) { alert('网络错误: ' + e.message); }
+}
+
+// Check if already logged in
+const token = localStorage.getItem('qs_token');
+if (token) { window.location.href = '/'; }
+</script>
+</body>
+</html>

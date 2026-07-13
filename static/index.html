@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商家 POI 查询工具</title>
+    <link rel="stylesheet" href="/css/style.css?v=2">
+</head>
+<body>
+
+<header class="app-header">
+    <h1>📍 商家 POI 信息查询</h1>
+    <span class="subtitle">高德地图数据源 · 免费额度 5000次/天</span>
+    <span id="apiBadge" class="api-badge unconfigured" onclick="showConfigModal()" style="cursor:pointer">未配置 API</span>
+    <span id="userInfo"></span>
+    <a href="/login" id="loginLink" style="font-size:12px;color:var(--primary);text-decoration:none;margin-left:8px">登录</a>
+    <a href="/membership" style="font-size:12px;color:var(--success);text-decoration:none;margin-left:8px;font-weight:600">🏆 升级会员</a>
+</header>
+
+<div class="app-content">
+
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+        <div class="filter-section">
+            <h2>🔍 搜索条件</h2>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+                <label style="font-size:13px;font-weight:500;color:var(--gray-700)">数据源:</label>
+                <select id="filterProvider" style="padding:5px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px">
+                    <option value="amap">📍 高德地图（免费5000次/天）</option>
+                    <option value="baidumap">🗺 百度地图（免费~4000次/天）</option>
+                    <option value="tencentmap">🗺 腾讯地图（免费100万次/月）</option>
+                </select>
+            </div>
+            <div class="filter-grid">
+                <div class="filter-group" style="grid-column:span 2">
+                    <label>关键词</label>
+                    <input type="text" id="filterKeyword" placeholder="例: 律师事务所、口腔医院、教育机构、火锅店...">
+                </div>
+                <div class="filter-group" style="grid-column:span 2">
+                    <label>多个关键词（选填，每行一个，系统会分别搜索后合并去重）</label>
+                    <textarea id="filterKeywords" rows="2" placeholder="法律咨询&#10;律师&#10;法律事务所" style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px;resize:vertical;font-family:inherit"></textarea>
+                </div>
+                <div class="filter-group">
+                    <label>所在城市</label>
+                    <select id="filterCity"><option value="">全部城市</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>POI 类型</label>
+                    <select id="filterPoiType"><option value="">全部类型</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>所在省份（可选辅助筛选）</label>
+                    <select id="filterProvince"><option value="">全部省份</option></select>
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--gray-400);margin-top:8px">
+                💡 多关键词搜索会分别搜索每个关键词再合并去重，显著增加结果量。切换数据源时需配置对应 API Key。
+            </p>
+        </div>
+
+        <div class="filter-actions">
+            <button class="btn btn-primary btn-lg" id="btnSearch" onclick="doSearch()">
+                🔍 搜索
+            </button>
+            <button class="btn btn-success btn-lg" id="btnBatch" onclick="startBatchSearch()">
+                📥 批量搜索 <span id="batchLimit" style="font-size:11px;opacity:0.8">(最高100条)</span>
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="toggleNearby()" id="btnNearby">
+                📍 周边搜索
+            </button>
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--gray-600);cursor:pointer;margin-left:12px">
+                <input type="checkbox" id="filterMobileOnly" onchange="doSearch()">
+                📱 只看有手机号
+            </label>
+            <button class="btn btn-outline" onclick="resetFilters()" style="margin-left:auto">
+                🔄 重置
+            </button>
+        </div>
+
+        <!-- Nearby Search Panel (hidden by default) -->
+        <div id="nearbyPanel" class="filter-section" style="display:none;margin-top:12px;padding:12px;background:var(--gray-50);border-radius:var(--radius)">
+            <h2>📍 周边搜索</h2>
+            <div class="filter-grid">
+                <div class="filter-group" style="grid-column:span 2">
+                    <label>地址或小区名称</label>
+                    <input type="text" id="nearbyAddress" placeholder="例: 北京市海淀区中关村">
+                </div>
+                <div class="filter-group">
+                    <label>关键词</label>
+                    <input type="text" id="nearbyKeyword" placeholder="超市、医院、餐厅、教育...">
+                </div>
+                <div class="filter-group">
+                    <label>搜索半径（米）</label>
+                    <div class="range-group">
+                        <input type="number" id="nearbyRadius" value="1000" min="100" max="50000" step="100" style="flex:1">
+                        <span style="font-size:11px;color:var(--gray-400);white-space:nowrap">米（100~50000）</span>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions" style="margin-top:0">
+                <button class="btn btn-primary btn-lg" onclick="doNearbySearch()" id="btnNearbySearch">
+                    📍 开始搜索附近
+                </button>
+                <button class="btn btn-outline btn-lg" onclick="toggleNearby()">
+                    🔙 返回常规搜索
+                </button>
+            </div>
+        </div>
+        
+        <!-- Batch Progress -->
+        <div class="progress-bar-container hidden" id="batchProgress">
+            <div class="progress-header">
+                <span id="batchProgressText">准备中...</span>
+                <span id="downloadActions"></span>
+            </div>
+            <div class="progress-bar">
+                <div class="fill" id="batchProgressFill" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-panel">
+        <div class="results-header">
+            <div class="info" id="resultsInfo">暂无数据</div>
+            <div class="actions" id="resultActions" style="display:none;gap:6px">
+                <button class="btn btn-success btn-sm" onclick="exportAllResults()">
+                    📥 导出全部结果
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="exportCSV()">
+                    📄 导出当前页 CSV
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="copyTable()">
+                    📋 复制当前页
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>商家名称</th>
+                        <th>经营类型</th>
+                        <th>📱 手机号</th>
+                        <th>📞 座机</th>
+                        <th>地址</th>
+                        <th>所在城市</th>
+                        <th>所在区县</th>
+                        <th>所在省份</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="icon">📍</div>
+            <p id="emptyStateText">输入关键词和城市后点击搜索</p>
+            <p style="font-size:12px;margin-top:4px;color:var(--gray-400)">
+                支持高德地图 / 百度地图双数据源，多关键词合并搜索
+            </p>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+</div>
+
+<!-- Config Modal -->
+<div class="modal-overlay" id="configModal">
+    <div class="modal">
+        <h2>⚙️ API 配置</h2>
+        <div class="form-group">
+            <label>📍 高德地图 API Key（已配置: <span id="amapStatus" style="font-weight:600">否</span>）</label>
+            <input type="text" id="configAmapKey" placeholder="免费5000次/天">
+            <p style="font-size:11px;color:var(--gray-500);margin-top:2px">
+                <a href="https://lbs.amap.com" onclick="window.open('https://lbs.amap.com','_self');return false">lbs.amap.com</a>
+                → 控制台 → 应用管理 → 创建应用 → Key（Web服务）
+            </p>
+        </div>
+        <div class="form-group" style="margin-top:12px;border-top:1px solid var(--gray-100);padding-top:12px">
+            <label>🗺 百度地图 API Key（已配置: <span id="baiduStatus" style="font-weight:600">否</span>）</label>
+            <input type="text" id="configBaiduKey" placeholder="免费~4000次/天">
+            <p style="font-size:11px;color:var(--gray-500);margin-top:2px">
+                <a href="https://lbsyun.baidu.com" onclick="window.open('https://lbsyun.baidu.com','_self');return false">lbsyun.baidu.com</a>
+                → 控制台 → 应用管理 → 创建应用（服务端类型）→ 获取 Key
+            </p>
+        </div>
+        <div class="form-group" style="margin-top:12px;border-top:1px solid var(--gray-100);padding-top:12px">
+            <label>🗺 腾讯地图 API Key（已配置: <span id="tencentStatus" style="font-weight:600">否</span>）</label>
+            <input type="text" id="configTencentKey" placeholder="免费100万次/月">
+            <p style="font-size:11px;color:var(--gray-500);margin-top:2px">
+                <a href="https://lbs.qq.com" onclick="window.open('https://lbs.qq.com','_self');return false">lbs.qq.com</a>
+                → 控制台 → 应用管理 → 创建应用 → 获取 Key
+            </p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="hideConfigModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveConfig()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/app.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  qs-server:
+    build: .
+    ports:
+      - "9876:9876"
+    volumes:
+      - ./data:/app/data
+      - ./exports:/app/exports
+      - ./.env:/app/.env
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai

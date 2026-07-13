@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会员升级 - 商家信息查询</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body { background: var(--gray-100); }
+        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        h1 { text-align: center; font-size: 24px; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: var(--gray-500); margin-bottom: 30px; }
+        .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .plan { background: #fff; border-radius: 8px; padding: 28px; box-shadow: var(--shadow); border: 2px solid var(--gray-200); position: relative; }
+        .plan.premium { border-color: var(--primary); }
+        .plan h2 { font-size: 18px; margin-bottom: 6px; }
+        .plan .price { font-size: 28px; font-weight: 700; color: var(--primary); margin: 12px 0; }
+        .plan .price small { font-size: 14px; font-weight: 400; color: var(--gray-500); }
+        .plan ul { list-style: none; padding: 0; margin: 16px 0; }
+        .plan li { padding: 6px 0; font-size: 14px; color: var(--gray-700); }
+        .plan li::before { content: '✅ '; }
+        .plan .btn { width: 100%; justify-content: center; padding: 12px; margin-top: 10px; }
+        .badge { position: absolute; top: -10px; right: 16px; background: var(--primary); color: #fff; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
+        .payment-section { background: #fff; border-radius: 8px; padding: 24px; max-width: 500px; margin: 30px auto; text-align: center; box-shadow: var(--shadow); }
+        .payment-section h3 { margin-bottom: 12px; }
+        .payment-section input { padding: 8px; border: 1px solid var(--gray-300); border-radius: 4px; width: 80%; margin: 6px 0; }
+        .payment-section .qr-placeholder { width: 200px; height: 200px; margin: 15px auto; background: var(--gray-100); border: 2px dashed var(--gray-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--gray-400); overflow: hidden; }
+        .payment-section .qr-placeholder img { width: 100%; height: 100%; object-fit: contain; }
+        .note { font-size: 12px; color: var(--gray-400); text-align: center; margin-top: 20px; line-height: 1.6; }
+        @media (max-width: 640px) { .plans { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📍 会员升级</h1>
+    <p class="subtitle">按需选择适合你的方案</p>
+
+    <div class="plans">
+        <div class="plan">
+            <h2>免费版</h2>
+            <div class="price">¥0 <small>/ 永久</small></div>
+            <ul>
+                <li>每日 50 次搜索</li>
+                <li>每日 3 次导出</li>
+                <li>单关键词搜索</li>
+                <li>基础数据源</li>
+            </ul>
+            <button class="btn btn-outline" onclick="location.href='/'">开始使用</button>
+        </div>
+        <div class="plan premium">
+            <span class="badge">热销</span>
+            <h2>🏆 会员版</h2>
+            <div class="price">¥<span id="planPrice">99</span> <small>/ 月</small></div>
+            <ul>
+                <li>每日 5000 次搜索</li>
+                <li>不限次数导出</li>
+                <li>多关键词搜索</li>
+                <li>深度搜索（按区县/城市拆分）</li>
+                <li>全部数据源（高德/百度/腾讯）</li>
+                <li>优先技术支持</li>
+            </ul>
+            <button class="btn btn-primary" onclick="scrollToPayment()">立即开通</button>
+        </div>
+    </div>
+
+    <div class="payment-section" id="paymentSection">
+        <h3>💳 付款开通</h3>
+        <p style="font-size:13px;color:var(--gray-500)">扫描下方二维码付款后，提交通知即可开通</p>
+        <div class="qr-placeholder" id="qrContainer">
+            <span id="qrPlaceholder">加载中...</span>
+        </div>
+        <p style="font-size:13px;margin:8px 0">付款金额: ¥<span id="payAmount">99</span></p>
+        <p style="font-size:13px;color:var(--gray-500)">微信号: <span id="wechatId">-</span></p>
+        <p style="font-size:13px;color:var(--gray-500)">支付宝: <span id="alipayAccount">-</span></p>
+        
+        <hr style="margin:16px 0;border:none;border-top:1px solid var(--gray-100)">
+        <p style="font-size:13px;font-weight:500">已付款？提交你的联系方式，管理员确认后开通</p>
+        <input type="text" id="payContact" placeholder="你的微信号或手机号">
+        <button class="btn btn-success" onclick="submitPayment()" style="margin-top:8px">
+            ✅ 我已付款，申请开通
+        </button>
+        <div id="payResult" style="font-size:13px;margin-top:10px"></div>
+    </div>
+
+    <p class="note">
+        企业版 / 批量采购 / 定制开发请联系客服<br>
+        <a href="/">返回首页</a> · <a href="/admin">管理员入口</a>
+    </p>
+</div>
+
+<script>
+async function loadPaymentConfig() {
+    try {
+        const res = await fetch('/api/payment/config');
+        const d = await res.json();
+        if (d.success && d.config) {
+            const c = d.config;
+            document.getElementById('wechatId').textContent = c.wechat_id || '未设置';
+            document.getElementById('alipayAccount').textContent = c.alipay_account || '未设置';
+            document.getElementById('payAmount').textContent = c.price || '99';
+            document.getElementById('planPrice').textContent = c.price || '99';
+            
+            const qr = document.getElementById('qrContainer');
+            if (c.qr_code_url) {
+                qr.innerHTML = '<img src="' + c.qr_code_url + '" alt="收款码">';
+            } else {
+                qr.innerHTML = '<span>请联系管理员获取收款码</span>';
+            }
+        }
+    } catch(e) {}
+}
+
+function scrollToPayment() {
+    document.getElementById('paymentSection').scrollIntoView({behavior:'smooth'});
+}
+
+async function submitPayment() {
+    const token = localStorage.getItem('qs_token');
+    if (!token) { alert('请先登录后再提交付款通知'); window.location.href='/login'; return; }
+    const contact = document.getElementById('payContact').value.trim();
+    if (!contact) { alert('请输入你的联系方式（微信号或手机号）'); return; }
+    
+    try {
+        const res = await fetch('/api/payment/notify', {
+            method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+            body: JSON.stringify({contact})
+        });
+        const d = await res.json();
+        const el = document.getElementById('payResult');
+        if (d.success) {
+            el.innerHTML = '<span style="color:var(--success)">✅ 已通知管理员，将在24小时内为您开通会员</span>';
+        } else {
+            el.innerHTML = '<span style="color:var(--danger)">❌ ' + (d.error||'提交失败') + '</span>';
+        }
+    } catch(e) { alert('网络错误'); }
+}
+
+loadPaymentConfig();
+</script>
+</body>
+</html>

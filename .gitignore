@@ -1,0 +1,29 @@
+# API Keys
+.env
+
+# Database
+*.db
+
+# Export files
+/exports/*
+!/exports/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker data
+/data/stats.json
+/data/payment_config.json
