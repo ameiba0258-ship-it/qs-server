@@ -937,9 +937,10 @@ body {
         <div class="results-toolbar">
             <div class="results-info" id="resultsInfo">暂无数据</div>
             <div class="results-actions" id="resultActions">
-                <button class="btn-toolbar primary" onclick="exportAllResults()">📥 导出全部</button>
-                <button class="btn-toolbar" onclick="exportCSV()">📄 导出 CSV</button>
+                <button class="btn-toolbar primary" onclick="exportAllResults()">📥 导出</button>
+                <button class="btn-toolbar" onclick="exportCSV()">📄 CSV</button>
                 <button class="btn-toolbar" onclick="copyTable()">📋 复制</button>
+                <button class="btn-toolbar" onclick="showEmailModal()">✉ 发送到邮箱</button>
             </div>
         </div>
 
@@ -973,6 +974,26 @@ body {
     </div>
 
 </main>
+
+<!-- ============ EMAIL MODAL ============ -->
+<div class="config-modal-overlay" id="emailModal">
+    <div class="config-modal" style="max-width:380px">
+        <h2>✉ 发送到邮箱</h2>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px">将结果文件发送到您的邮箱</p>
+        <div class="field">
+            <label>接收邮箱</label>
+            <input type="email" id="emailTarget" placeholder="your@email.com" autocomplete="email" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">
+            <span id="emailExportInfo">当前结果将以 Excel 附件发送</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeEmailModal()">取消</button>
+            <button class="btn btn-primary" id="emailSendBtn" onclick="sendToEmail()">发送</button>
+        </div>
+    </div>
+</div>
+
 
 <!-- ============ CONFIG MODAL ============ -->
 <div class="config-modal-overlay" id="configModal">

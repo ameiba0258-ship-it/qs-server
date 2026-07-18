@@ -444,13 +444,14 @@ async def download_result(task_id: str, fmt: str = "xlsx"):
         from openpyxl import load_workbook
         wb = load_workbook(filepath)
         ws = wb.active
-        fields = ["company_name", "credit_code", "legal_person", "reg_capital",
-                   "reg_date", "address", "phone", "email", "status", "industry",
-                   "province", "city"]
+        fieldnames = ["company_name", "industry", "mobile_phone", "landline_phone",
+                   "address", "city", "district", "province",
+                   "phone", "credit_code", "legal_person", "reg_capital",
+                   "reg_date", "email", "status"]
         data = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             if any(v for v in row):
-                item = CompanyInfo(**dict(zip(fields, row)))
+                item = CompanyInfo(**dict(zip(fieldnames, row)))
                 data.append(item)
         csv_path = filepath.replace(".xlsx", ".csv")
         export_to_csv(data, csv_path)
@@ -459,13 +460,14 @@ async def download_result(task_id: str, fmt: str = "xlsx"):
         from openpyxl import load_workbook
         wb = load_workbook(filepath)
         ws = wb.active
-        fields = ["company_name", "credit_code", "legal_person", "reg_capital",
-                   "reg_date", "address", "phone", "email", "status", "industry",
-                   "province", "city"]
+        fieldnames = ["company_name", "industry", "mobile_phone", "landline_phone",
+                   "address", "city", "district", "province",
+                   "phone", "credit_code", "legal_person", "reg_capital",
+                   "reg_date", "email", "status"]
         data = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             if any(v for v in row):
-                item = CompanyInfo(**dict(zip(fields, row)))
+                item = CompanyInfo(**dict(zip(fieldnames, row)))
                 data.append(item)
         json_path = filepath.replace(".xlsx", ".json")
         export_json(data, json_path)
@@ -654,6 +656,48 @@ async def payment_history(request: Request):
             all_notifs = json.load(f)
         pending_notifs = [n for n in all_notifs if n.get("username") == user["username"] and n.get("status") == "pending"]
     return {"success": True, "payments": payments, "pending_notifications": pending_notifs}
+
+
+
+
+@app.get("/api/admin/email-config")
+async def get_email_config(request: Request):
+    """Admin: get SMTP email config."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user or user["tier"] != "admin":
+        return {"success": False, "error": "无权限"}
+    config = auth_db.get_email_config()
+    # Don't expose password in full
+    safe = dict(config)
+    if safe.get("password"):
+        safe["password"] = "••••••" if safe["password"] else ""
+    return {"success": True, "config": safe}
+
+
+@app.post("/api/admin/email-config")
+async def save_email_config(data: dict, request: Request):
+    """Admin: save SMTP email config."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user or user["tier"] != "admin":
+        return {"success": False, "error": "无权限"}
+    config = {
+        "host": data.get("host", "").strip(),
+        "port": int(data.get("port", 587)),
+        "username": data.get("username", "").strip(),
+        "password": data.get("password", "").strip(),
+        "from_addr": data.get("from_addr", "").strip() or data.get("username", "").strip(),
+        "configured": bool(data.get("host", "") and data.get("username", "") and data.get("password", "")),
+    }
+    auth_db.save_email_config(config)
+    return {"success": True, "message": "邮件配置已保存"}
 
 
 # --- Membership & Admin Routes ---
@@ -994,6 +1038,98 @@ async def around_search(data: dict):
                 return {"success": False, "error": f"请求失败: {str(e)[:50]}"}
     
     return {"success": True, "total": total, "data": results, "page": page, "page_size": page_size, "keyword": keyword, "location": location}
+
+
+
+
+@app.post("/api/export-email")
+async def export_email(data: dict, request: Request):
+    """Send export file to user's email via configured SMTP."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user:
+        return {"success": False, "error": "登录已过期"}
+
+    task_id = data.get("task_id", "")
+    target_email = data.get("email", "").strip().lower()
+    if not task_id or not target_email:
+        return {"success": False, "error": "参数不完整"}
+    if "@" not in target_email or "." not in target_email:
+        return {"success": False, "error": "邮箱格式不正确"}
+
+    task = tasks.get(task_id)
+    if not task or task["status"] != "completed":
+        return {"success": False, "error": "没有可导出的结果"}
+    filepath = task.get("filepath")
+    if not filepath or not os.path.exists(filepath):
+        return {"success": False, "error": "文件不存在"}
+
+    # Read SMTP config
+    config_path = BASE_DIR / "data" / "email_config.json"
+    if not config_path.exists():
+        return {"success": False, "error": "邮件服务未配置，请联系管理员设置SMTP"}
+
+    import json
+    smtp_config = json.loads(config_path.read_text(encoding="utf-8"))
+    host = smtp_config.get("host", "")
+    port = int(smtp_config.get("port", 587))
+    username = smtp_config.get("username", "")
+    password = smtp_config.get("password", "")
+    from_addr = smtp_config.get("from_addr", username)
+
+    if not host or not username or not password:
+        return {"success": False, "error": "SMTP 配置不完整"}
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.base import MIMEBase
+        from email import encoders
+
+        msg = MIMEMultipart()
+        msg["Subject"] = f"商家 POI 数据导出 - {task.get('filename', 'result.xlsx')}"
+        msg["From"] = from_addr
+        msg["To"] = target_email
+        msg["Message-ID"] = f"<{uuid.uuid4().hex}@ameibar.com>"
+
+        body_text = f"""您好，
+
+您的商家 POI 数据导出已完成，请查收附件。
+
+文件: {task.get('filename', 'result.xlsx')}
+数据条数: {task.get('count', 0)}
+
+—— 商家 POI 查询平台
+"""
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+
+        with open(filepath, "rb") as f:
+            attachment = MIMEBase("application", "octet-stream")
+            attachment.set_payload(f.read())
+        encoders.encode_base64(attachment)
+        attachment.add_header(
+            "Content-Disposition",
+            attachment.add_header("Content-Disposition", "attachment; filename=\\" + task.get("filename", "result.xlsx") + "\"")
+        )
+        msg.attach(attachment)
+
+        _fname_for_attach = task.get("filename", "result.xlsx")
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            server.starttls()
+            server.login(username, password)
+            server.send_message(msg)
+
+        return {"success": True, "message": f"文件已发送至 {target_email}"}
+    except smtplib.SMTPAuthenticationError:
+        return {"success": False, "error": "SMTP 认证失败，请检查邮箱密码"}
+    except smtplib.SMTPException as e:
+        return {"success": False, "error": f"邮件发送失败: {str(e)[:80]}"}
+    except Exception as e:
+        return {"success": False, "error": f"发送失败: {str(e)[:80]}"}
 
 
 if __name__ == "__main__":

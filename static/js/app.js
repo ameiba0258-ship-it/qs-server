@@ -12,6 +12,8 @@ const state = {
     loading: false,
     batch: { task_id: null, status: '', progress: 0, total: 0, count: 0 },
     batchPolling: null,
+    lastCompletedTaskId: null,
+    lastCompletedCount: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -720,5 +722,67 @@ function toggleAdvanced() {
     panel.classList.toggle('open');
     if (link) link.textContent = isOpen ? '+ 多关键词搜索（每行一个）' : '− 收起高级筛选';
 }
+
+
+// === Email Export ===
+function showEmailModal() {
+    if (!state.lastCompletedTaskId) {
+        showToast('请先进行批量搜索后再发送', 'error');
+        return;
+    }
+    // Auto-fill saved email
+    const saved = localStorage.getItem('qs_saved_email');
+    if (saved) document.getElementById('emailTarget').value = saved;
+    document.getElementById('emailExportInfo').textContent = 
+        '发送 ' + state.lastCompletedCount + ' 条数据至您的邮箱';
+    document.getElementById('emailModal').classList.add('active');
+    document.getElementById('emailTarget').focus();
+}
+
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+async function sendToEmail() {
+    const email = document.getElementById('emailTarget').value.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+    }
+    const taskId = state.lastCompletedTaskId;
+    if (!taskId) {
+        showToast('没有可发送的结果', 'error');
+        closeEmailModal();
+        return;
+    }
+    
+    const btn = document.getElementById('emailSendBtn');
+    btn.disabled = true;
+    btn.textContent = '发送中...';
+    
+    try {
+        const r = await fetch('/api/export-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('qs_token')
+            },
+            body: JSON.stringify({ task_id: taskId, email: email })
+        });
+        const d = await r.json();
+        if (d.success) {
+            showToast('✅ ' + d.message, 'success');
+            closeEmailModal();
+        } else {
+            showToast('❌ ' + (d.error || '发送失败'), 'error');
+        }
+    } catch(e) {
+        showToast('❌ 网络错误: ' + e.message, 'error');
+    }
+    
+    btn.disabled = false;
+    btn.textContent = '发送';
+}
+
 
 document.addEventListener('DOMContentLoaded', init);

@@ -526,4 +526,31 @@ def admin_reset_password(username_or_email, new_password):
     finally:
         conn.close()
 
+
+
+# === SMTP Email Config ===
+def save_email_config(config: dict):
+    """Save SMTP email configuration."""
+    config_path = os.path.join(os.path.dirname(DB_PATH), "email_config.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+    return True
+
+
+def get_email_config() -> dict:
+    """Get SMTP email configuration."""
+    config_path = os.path.join(os.path.dirname(DB_PATH), "email_config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "host": "",
+        "port": 587,
+        "username": "",
+        "password": "",
+        "from_addr": "",
+        "configured": False,
+    }
+
+
 _init_conn.close()
