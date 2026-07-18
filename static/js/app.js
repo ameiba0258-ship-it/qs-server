@@ -663,7 +663,6 @@ function exportAllResults() {
 
 // --- Nearby Search ---
 let nearbyMode = false;
-
 function toggleNearbySection() {
     const body = document.getElementById('nearbyBody');
     const arrow = document.getElementById('nearbyArrow');
@@ -679,8 +678,7 @@ function setDistance(val) {
     document.getElementById('nearbyRadius').value = val;
 }
 
-let nearbyMode = false;
-function toggleNearby() {
+nearbyMode = false;
     // Legacy - handled by switchSearchMode already
     toggleNearbySection();
 }
