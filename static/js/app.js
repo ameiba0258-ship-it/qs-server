@@ -21,11 +21,16 @@ const $ = (id) => document.getElementById(id);
 
 // --- Init ---
 async function init() {
-    await Promise.all([loadConfig(), loadRegions(), loadPoiTypes()]);
+    await loadConfig();
     checkAuth();
-    setupListeners();
-    updatePoiTypeSelect();
-    setupMobile();
+    
+    // Area search: load regions + POI types + setup listeners
+    if (document.getElementById('filterKeyword')) {
+        await Promise.all([loadRegions(), loadPoiTypes()]);
+        setupListeners();
+        updatePoiTypeSelect();
+        setupMobile();
+    }
 }
 
 async function loadConfig() {

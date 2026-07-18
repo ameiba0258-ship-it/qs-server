@@ -542,6 +542,15 @@ async def profile_page():
         return HTMLResponse(profile_path.read_text(encoding="utf-8"))
     return {"message": "Profile page not found"}
 
+
+@app.get("/nearby")
+async def serve_nearby():
+    """Nearby search page."""
+    nearby_path = BASE_DIR / "static" / "nearby.html"
+    if nearby_path.exists():
+        return HTMLResponse(nearby_path.read_text(encoding="utf-8"))
+    return {"message": "Nearby page not found"}
+
 @app.get("/search")
 async def serve_search():
     """Main search interface — protected by frontend auth check."""
