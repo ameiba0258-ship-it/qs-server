@@ -215,6 +215,19 @@ body {
             </div>
         </div>
 
+        <!-- Avatar Upload -->
+        <div class="card">
+            <h2>📷 头像</h2>
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+                <div id="avatarPreview" style="width:64px;height:64px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0">👤</div>
+                <div>
+                    <button class="btn-outline" onclick="document.getElementById('avatarInput').click()" style="font-size:13px;cursor:pointer">更换头像</button>
+                    <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+                    <p style="font-size:12px;color:#94a3b8;margin-top:4px">JPG/PNG，最大 2MB</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Usage -->
         <div class="card">
             <h2>📊 今日用量</h2>
@@ -358,6 +371,16 @@ async function loadProfile() {
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('profileContent').style.display = 'block';
 
+        // Load avatar
+        const avatarPreview = document.getElementById('avatarPreview');
+        if (avatarPreview && u.id) {
+            const img = new Image();
+            img.onload = function() { avatarPreview.innerHTML = ''; avatarPreview.appendChild(img); };
+            img.onerror = function() { /* keep default */ };
+            img.src = '/api/avatar/' + u.id + '?t=' + Date.now();
+            img.style.cssText = 'width:64px;height:64px;border-radius:12px;object-fit:cover';
+        }
+
         // Load payment history
         try {
             const pr = await fetch('/api/auth/payment-history', {
@@ -427,6 +450,35 @@ async function changePassword() {
 
     btn.disabled = false;
     btn.textContent = '修改密码';
+}
+
+// === Avatar Upload ===
+async function uploadAvatar(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const btn = document.querySelector('.btn-outline');
+        btn.textContent = '上传中...';
+        btn.disabled = true;
+        try {
+            const r = await fetch('/api/auth/avatar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                body: JSON.stringify({ image: e.target.result })
+            });
+            const d = await r.json();
+            if (d.success) {
+                document.getElementById('avatarPreview').innerHTML = '<img src="' + d.avatar_url + '?t=' + Date.now() + '" style="width:64px;height:64px;border-radius:12px;object-fit:cover">';
+                showToast('✅ 头像已更新', 'success');
+            } else {
+                showToast('❌ ' + (d.error || '上传失败'), 'error');
+            }
+        } catch(e) { showToast('❌ 网络错误', 'error'); }
+        btn.textContent = '更换头像';
+        btn.disabled = false;
+    };
+    reader.readAsDataURL(file);
 }
 
 // === Init ===

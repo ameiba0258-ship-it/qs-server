@@ -554,7 +554,16 @@ async function checkAuth() {
             // Populate dropdown
             document.getElementById('dropdownEmail').textContent = u.username;
             document.getElementById('dropdownTier').textContent = tierLabels[u.tier] || u.tier;
-            document.getElementById('userDisplayName').textContent = u.username.split('@')[0];
+                        document.getElementById('userDisplayName').textContent = u.username.split('@')[0];
+            
+            // Load avatar
+            const avatarEl = document.getElementById('userAvatarSmall');
+            if (avatarEl && u.id) {
+                const img = new Image();
+                img.onload = function() { avatarEl.innerHTML = ''; avatarEl.appendChild(img); };
+                img.src = '/api/avatar/' + u.id + '?t=' + Date.now();
+                img.style.cssText = 'width:24px;height:24px;border-radius:6px;object-fit:cover';
+            }
             
             const used = u.today_searches || 0;
             const limit = u.daily_limit || 50;
@@ -644,23 +653,13 @@ function exportAllResults() {
 // --- Nearby Search ---
 let nearbyMode = false;
 
-function switchSearchMode(mode) {
-    const areaEl = document.getElementById('areaSearchMode');
-    const nearbyEl = document.getElementById('nearbySearchMode');
-    const tabArea = document.getElementById('modeTabArea');
-    const tabNearby = document.getElementById('modeTabNearby');
-    
-    if (mode === 'nearby') {
-        if (areaEl) areaEl.style.display = 'none';
-        if (nearbyEl) nearbyEl.style.display = 'block';
-        if (tabArea) tabArea.classList.remove('active');
-        if (tabNearby) tabNearby.classList.add('active');
-    } else {
-        if (areaEl) areaEl.style.display = 'block';
-        if (nearbyEl) nearbyEl.style.display = 'none';
-        if (tabArea) tabArea.classList.add('active');
-        if (tabNearby) tabNearby.classList.remove('active');
-    }
+function toggleNearbySection() {
+    const body = document.getElementById('nearbyBody');
+    const arrow = document.getElementById('nearbyArrow');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.classList.toggle('open', !isOpen);
 }
 
 function setDistance(val) {
@@ -671,9 +670,8 @@ function setDistance(val) {
 
 let nearbyMode = false;
 function toggleNearby() {
-    // Legacy - redirect to mode switch
-    switchSearchMode(nearbyMode ? 'area' : 'nearby');
-    nearbyMode = !nearbyMode;
+    // Legacy - handled by switchSearchMode already
+    toggleNearbySection();
 }
 
 async function doNearbySearch() {

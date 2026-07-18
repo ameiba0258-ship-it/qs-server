@@ -1164,6 +1164,62 @@ async def export_email(data: dict, request: Request):
         return {"success": False, "error": f"发送失败: {str(e)[:80]}"}
 
 
+
+
+import shutil
+
+AVATAR_DIR = BASE_DIR / "data" / "avatars"
+os.makedirs(str(AVATAR_DIR), exist_ok=True)
+
+@app.post("/api/auth/avatar")
+async def upload_avatar(request: Request):
+    """Upload user avatar (base64 encoded image)."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user:
+        return {"success": False, "error": "登录已过期"}
+    
+    data = await request.json()
+    image_data = data.get("image", "")
+    if not image_data:
+        return {"success": False, "error": "请选择头像图片"}
+    
+    # Decode base64
+    import base64
+    try:
+        # Handle data:image/png;base64,xxx format
+        if "," in image_data:
+            image_data = image_data.split(",")[1]
+        img_bytes = base64.b64decode(image_data)
+    except Exception:
+        return {"success": False, "error": "图片格式错误"}
+    
+    # Validate file size (max 2MB)
+    if len(img_bytes) > 2 * 1024 * 1024:
+        return {"success": False, "error": "图片不能超过2MB"}
+    
+    # Save file
+    filepath = str(AVATAR_DIR / f"{user['id']}.jpg")
+    with open(filepath, "wb") as f:
+        f.write(img_bytes)
+    
+    return {"success": True, "message": "头像已更新", "avatar_url": f"/api/avatar/{user['id']}"}
+
+
+@app.get("/api/avatar/{user_id}")
+async def get_avatar(user_id: int):
+    """Serve user avatar image."""
+    for ext in ["jpg", "jpeg", "png", "gif", "webp"]:
+        filepath = str(AVATAR_DIR / f"{user_id}.{ext}")
+        if os.path.exists(filepath):
+            media_type = f"image/{'jpeg' if ext in ('jpg','jpeg') else ext}"
+            return FileResponse(filepath, media_type=media_type)
+    return JSONResponse(status_code=404, content={"error": "Avatar not found"})
+
+
 if __name__ == "__main__":
     import uvicorn
     print("=" * 50)

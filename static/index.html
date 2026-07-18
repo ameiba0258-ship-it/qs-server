@@ -135,41 +135,6 @@ body {
 }
 
 /* Search Mode Tabs */
-.search-mode-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 20px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 3px;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.mode-tab {
-    flex: 1;
-    padding: 8px 16px;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.6);
-    cursor: pointer;
-    transition: all 0.25s;
-    text-align: center;
-}
-
-.mode-tab.active {
-    background: #fff;
-    color: #1e293b;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.mode-tab:hover:not(.active) { color: rgba(255,255,255,0.9); }
-
-/* Distance Buttons */
 .distance-group {
     display: flex;
     gap: 3px;
@@ -193,8 +158,7 @@ body {
 .dist-btn.active { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #fff; }
 
 @media (max-width: 640px) {
-    .search-mode-tabs { max-width: 100%; }
-    .mode-tab { font-size: 12px; padding: 6px 10px; }
+
     .dist-btn { font-size: 10px; padding: 4px 7px; }
 }
 
@@ -364,16 +328,7 @@ body {
 
 .btn-upgrade-nav:hover { background: #047857; }
 
-#apiBadge {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
 
-.api-badge.configured { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-.api-badge.unconfigured { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
 
 /* ========== HERO SECTION ========== */
 .hero-section {
@@ -1050,7 +1005,7 @@ body {
         </nav>
         <div class="topbar-right">
             <!-- API Status Badge -->
-            <span id="apiBadge" class="api-badge unconfigured" onclick="showConfigModal()" title="点击配置API">未配置 API</span>
+            
             
             <!-- Logged Out -->
             <a href="/" id="loginLink" class="login-link">登录</a>
@@ -1095,59 +1050,57 @@ body {
         <h1 class="hero-title">搜索商家信息</h1>
         <p class="hero-desc">输入关键词快速获取精准商家数据</p>
 
-        <!-- Search Mode Tabs -->
-        <div class="search-mode-tabs">
-            <button class="mode-tab active" id="modeTabArea" onclick="switchSearchMode('area')">按区域搜索</button>
-            <button class="mode-tab" id="modeTabNearby" onclick="switchSearchMode('nearby')">按附近搜索</button>
+        <!-- Search Bar -->
+        <div class="search-bar-wrap">
+            <span class="icon">🔍</span>
+            <input type="text" id="filterKeyword" placeholder="输入关键词，如：律师事务所、口腔医院、火锅店..." autofocus>
+            <button class="btn-search" id="btnSearch" onclick="doSearch()">搜索</button>
         </div>
 
-        <!-- Area Search Mode -->
-        <div id="areaSearchMode">
-            <div class="search-bar-wrap">
-                <span class="icon">🔍</span>
-                <input type="text" id="filterKeyword" placeholder="输入关键词，如：律师事务所、口腔医院、火锅店..." autofocus>
-                <button class="btn-search" id="btnSearch" onclick="doSearch()">搜索</button>
-            </div>
-            <div class="quick-filters">
-                <select id="filterProvince"><option value="">省份</option></select>
-                <select id="filterCity"><option value="">城市</option></select>
-                <select id="filterDistrict"><option value="">区县</option></select>
-                <select id="filterPoiType"><option value="">经营类型</option></select>
-                <button class="btn-outline-light" id="btnBatch" onclick="startBatchSearch()">📥 批量搜索</button>
+        <!-- Filters Row -->
+        <div class="quick-filters">
+            <select id="filterProvince"><option value="">省份</option></select>
+            <select id="filterCity"><option value="">城市</option></select>
+            <select id="filterDistrict"><option value="">区县</option></select>
+            <select id="filterPoiType"><option value="">经营类型</option></select>
+            <button class="btn-outline-light" id="btnBatch" onclick="startBatchSearch()">📥 批量</button>
+        </div>
 
+        <!-- Nearby Search Section -->
+        <div class="nearby-section">
+            <div class="nearby-header" onclick="toggleNearbySection()">
+                <span>📍 附近搜索</span>
+                <span class="nearby-arrow" id="nearbyArrow">▸</span>
             </div>
-            <div class="adv-toggle">
-                <a href="javascript:toggleAdvanced()" id="advToggleLink">+ 多关键词搜索</a>
-            </div>
-            <div class="adv-panel" id="advPanel">
-                <textarea id="filterKeywords" rows="2" placeholder="每行一个关键词，系统将分别搜索后合并去重"></textarea>
-                <div class="adv-actions">
-                    <button class="btn-adv-action" onclick="resetFilters()">🔄 重置</button>
+            <div class="nearby-body" id="nearbyBody" style="display:none">
+                <div class="nearby-grid">
+                    <div><input type="text" id="nearbyAddress" placeholder="地址或小区名称，如：北京市海淀区中关村"></div>
+                    <div><input type="text" id="nearbyKeyword" placeholder="关键词，如：超市、餐厅、医院"></div>
+                </div>
+                <div class="nearby-footer">
+                    <div class="distance-group">
+                        <span>范围</span>
+                        <button class="dist-btn active" data-dist="1000" onclick="setDistance(1000)">1km</button>
+                        <button class="dist-btn" data-dist="2000" onclick="setDistance(2000)">2km</button>
+                        <button class="dist-btn" data-dist="5000" onclick="setDistance(5000)">5km</button>
+                        <button class="dist-btn" data-dist="10000" onclick="setDistance(10000)">10km</button>
+                        <button class="dist-btn" data-dist="20000" onclick="setDistance(20000)">20km</button>
+                        <button class="dist-btn" data-dist="50000" onclick="setDistance(50000)">50km</button>
+                        <input type="hidden" id="nearbyRadius" value="1000">
+                    </div>
+                    <button class="btn-nearby" id="btnNearbySearch" onclick="doNearbySearch()">📍 搜索附近</button>
                 </div>
             </div>
         </div>
 
-        <!-- Nearby Search Mode -->
-        <div id="nearbySearchMode" style="display:none">
-            <div class="search-bar-wrap" style="margin-bottom:10px">
-                <span class="icon">📍</span>
-                <input type="text" id="nearbyAddress" placeholder="输入地址或小区名称，如：北京市海淀区中关村">
-                <button class="btn-search" onclick="doNearbySearch()" id="btnNearbySearch">搜索</button>
-            </div>
-            <div class="quick-filters">
-                <input type="text" id="nearbyKeyword" placeholder="关键词，如：超市、餐厅、医院" style="padding:7px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.06);outline:none;min-width:140px">
-                <div class="distance-group">
-                    <span style="font-size:11px;color:rgba(255,255,255,0.5);margin-right:4px">范围</span>
-                    <button class="dist-btn active" data-dist="1000" onclick="setDistance(1000)">1km</button>
-                    <button class="dist-btn" data-dist="2000" onclick="setDistance(2000)">2km</button>
-                    <button class="dist-btn" data-dist="5000" onclick="setDistance(5000)">5km</button>
-                    <button class="dist-btn" data-dist="10000" onclick="setDistance(10000)">10km</button>
-                    <button class="dist-btn" data-dist="20000" onclick="setDistance(20000)">20km</button>
-                    <button class="dist-btn" data-dist="50000" onclick="setDistance(50000)">50km</button>
-                    <input type="hidden" id="nearbyRadius" value="1000">
-                </div>
-            </div>
+        <!-- Advanced: Multi-keyword -->
+        <div class="adv-toggle">
+            <a href="javascript:toggleAdvanced()" id="advToggleLink">+ 多关键词搜索</a>
         </div>
+        <div class="adv-panel" id="advPanel">
+            <textarea id="filterKeywords" rows="2" placeholder="每行一个关键词，系统将分别搜索后合并去重"></textarea>
+        </div>
+
     </div>
 </section>
 
