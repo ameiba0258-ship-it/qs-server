@@ -75,6 +75,7 @@ async function loadUsers() {
             <td>${u.username}</td>
             <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
             <td>${u.today_searches}</td>
+            <td style="font-size:12px">${u.expiry_date ? u.expiry_date : '-'}</td>
             <td>
                 <select id="tier_${u.id}">
                     <option value="free" ${u.tier==='free'?'selected':''}>免费</option>

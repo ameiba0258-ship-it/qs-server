@@ -303,13 +303,14 @@ def set_user_tier(target_username, new_tier, admin_username="admin"):
 def get_all_users():
     conn = _get_db()
     try:
-        rows = conn.execute("SELECT id, username, email, tier, created_at FROM users ORDER BY id").fetchall()
+        rows = conn.execute("SELECT id, username, email, tier, created_at, expiry_date FROM users ORDER BY id").fetchall()
         users = []
         for row in rows:
             usage = check_usage(row["id"])
             users.append({
                 "id": row["id"], "username": row["username"],
                 "email": row["email"] or "", "tier": row["tier"],
+                "expiry_date": row["expiry_date"] if row["expiry_date"] else None,
                 "today_searches": usage,
                 "created_at": str(row["created_at"]) if row["created_at"] else "",
             })
