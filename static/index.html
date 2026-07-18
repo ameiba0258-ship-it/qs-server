@@ -1176,4 +1176,43 @@ body {
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="/js/app.js?v=3"></script>
+<script>
+// Diagnostic: check if JavaScript loads correctly
+window.__DIAG = {};
+window.__DIAG.stage1 = true; // Inline script executed
+
+setTimeout(function() {
+    try {
+        window.__DIAG.stage2 = typeof doSearch === 'function';
+        window.__DIAG.stage3 = typeof init === 'function';
+        window.__DIAG.stage4 = !!document.getElementById('btnSearch');
+        window.__DIAG.stage5 = !!document.getElementById('filterKeyword');
+        
+        // Visual indicator
+        var badge = document.createElement('div');
+        badge.id = 'js-diag-badge';
+        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99999;font-size:11px;padding:4px 10px;border-radius:4px';
+        
+        if (window.__DIAG.stage2 && window.__DIAG.stage3) {
+            badge.style.background = '#059669';
+            badge.style.color = '#fff';
+            badge.textContent = 'JS ✅ doSearch ✅ init ✅';
+            // Try to trigger init manually if it hasn't run
+            if (window.init) {
+                window.init();
+            }
+        } else {
+            badge.style.background = '#dc2626';
+            badge.style.color = '#fff';
+            badge.textContent = 'JS ⚠️ diag:' + JSON.stringify(window.__DIAG);
+        }
+        document.body.appendChild(badge);
+    } catch(e) {
+        var badge = document.createElement('div');
+        badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99999;background:#dc2626;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px';
+        badge.textContent = '❌ Error: ' + e.message.slice(0, 60);
+        document.body.appendChild(badge);
+    }
+}, 1500);
+</script>
 </body>
