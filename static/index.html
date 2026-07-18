@@ -1197,14 +1197,17 @@ setTimeout(function() {
             badge.style.background = '#059669';
             badge.style.color = '#fff';
             badge.textContent = 'JS ✅ doSearch ✅ init ✅';
-            // Try to trigger init manually if it hasn't run
             if (window.init) {
                 window.init();
             }
         } else {
             badge.style.background = '#dc2626';
             badge.style.color = '#fff';
-            badge.textContent = 'JS ⚠️ diag:' + JSON.stringify(window.__DIAG);
+            var extra = '';
+            if (window.__JS_CHECK) extra = ' | check=' + window.__JS_CHECK;
+            if (window.__JS_ERRORS) extra += ' | ' + window.__JS_ERRORS;
+            if (window.__JS_ERROR) extra += ' | error=' + window.__JS_ERROR.slice(0,40);
+            badge.textContent = 'JS ⚠️ diag:' + JSON.stringify(window.__DIAG) + extra;
         }
         document.body.appendChild(badge);
     } catch(e) {
