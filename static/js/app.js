@@ -627,13 +627,19 @@ function logout() {
 
 // --- Listeners ---
 function setupListeners() {
-    $('filterProvince').addEventListener('change', function () {
-        updateCityOptions();
-        $('filterCity').value = '';
-    });
-    $('filterKeyword').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') doSearch();
-    });
+    const fp = $('filterProvince');
+    if (fp) {
+        fp.addEventListener('change', function () {
+            updateCityOptions();
+            if ($('filterCity')) $('filterCity').value = '';
+        });
+    }
+    const fk = $('filterKeyword');
+    if (fk) {
+        fk.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') doSearch();
+        });
+    }
 }
 
 function exportAllResults() {
