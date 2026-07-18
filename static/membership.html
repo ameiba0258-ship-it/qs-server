@@ -116,7 +116,7 @@ function scrollToPayment() {
 
 async function submitPayment() {
     const token = localStorage.getItem('qs_token');
-    if (!token) { alert('请先登录后再提交付款通知'); window.location.href='/login'; return; }
+    if (!token) { alert('请先登录后再提交付款通知'); window.location.href='/'; return; }
     const contact = document.getElementById('payContact').value.trim();
     if (!contact) { alert('请输入你的联系方式（微信号或手机号）'); return; }
     

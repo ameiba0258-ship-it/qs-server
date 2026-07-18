@@ -3,75 +3,739 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - 商家信息查询</title>
+    <title>登录 - 商家 POI 信息查询</title>
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        .auth-container { max-width: 400px; margin: 60px auto; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-        .auth-container h1 { font-size: 20px; margin-bottom: 20px; text-align: center; }
-        .auth-container .form-group { margin-bottom: 14px; }
-        .auth-container label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--gray-600); }
-        .auth-container input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 14px; }
-        .auth-container .btn { width: 100%; justify-content: center; padding: 10px; }
-        .auth-container p { text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 14px; }
-        .auth-container .tier-info { background: var(--gray-50); padding: 12px; border-radius: 6px; font-size: 12px; margin: 14px 0; }
-        .auth-container .tier-info strong { color: var(--primary); }
+        /* === Login Page Specific Styles === */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            background: var(--gray-100);
+        }
+
+        /* Left Brand Panel */
+        .brand-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #1d4ed8 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 60%, rgba(255,255,255,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 1;
+            max-width: 420px;
+            color: #fff;
+        }
+
+        .brand-content .logo-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .brand-content h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .brand-content .tagline {
+            font-size: 15px;
+            opacity: 0.85;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .brand-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .brand-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 14px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand-features li:first-child {
+            border-top: none;
+        }
+
+        .brand-features .feat-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Right Login Panel */
+        .login-panel {
+            flex: 0 0 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            background: #fff;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .login-container .product-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+
+        .login-container .product-subtitle {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-bottom: 28px;
+        }
+
+        .login-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .login-tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--gray-500);
+            transition: all 0.2s;
+        }
+
+        .login-tab.active {
+            background: #fff;
+            color: var(--gray-900);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .login-tab:hover:not(.active) {
+            color: var(--gray-700);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .form-group .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-group .input-icon {
+            position: absolute;
+            left: 12px;
+            font-size: 16px;
+            color: var(--gray-400);
+            pointer-events: none;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px 10px 38px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--gray-800);
+            background: var(--gray-50);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            background: #fff;
+        }
+
+        .form-group input::placeholder {
+            color: var(--gray-400);
+        }
+
+        .form-group .input-error {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+
+        .form-error {
+            font-size: 12px;
+            color: var(--danger);
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-error.show {
+            display: block;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 11px 24px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-login:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-login:active {
+            transform: scale(0.98);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-login .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .login-footer a {
+            font-size: 13px;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .login-footer .forgot-pw {
+            color: var(--gray-400);
+            font-size: 12px;
+        }
+
+        /* Tier Info Card */
+        .tier-card {
+            margin-top: 20px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+
+        .tier-card .tier-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .tier-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-top: 1px solid var(--gray-200);
+            font-size: 13px;
+        }
+
+        .tier-row:first-of-type {
+            border-top: none;
+        }
+
+        .tier-row .tier-label {
+            color: var(--gray-600);
+        }
+
+        .tier-row .tier-value {
+            font-weight: 600;
+        }
+
+        .tier-row .tier-free .tier-value {
+            color: var(--gray-500);
+        }
+
+        .tier-row .tier-premium .tier-value {
+            color: var(--primary);
+        }
+
+        .tier-upgrade {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .tier-upgrade a {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--success);
+            text-decoration: none;
+        }
+
+        .tier-upgrade a:hover {
+            text-decoration: underline;
+        }
+
+        /* Alert / Toast inside login */
+        .login-alert {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .login-alert.error {
+            display: flex;
+            background: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid #fca5a5;
+        }
+
+        .login-alert.success {
+            display: flex;
+            background: var(--success-light);
+            color: var(--success);
+            border: 1px solid #6ee7b7;
+        }
+
+        /* Responsive */
+        @media (min-width: 900px) {
+            .brand-panel {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 899px) {
+            .login-panel {
+                flex: 1;
+                padding: 24px 16px;
+            }
+            .login-container {
+                max-width: 400px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-panel {
+                padding: 20px 16px;
+            }
+            .login-container .product-name {
+                font-size: 18px;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="auth-container">
-    <h1>📍 商家信息查询</h1>
-    <div id="authForm">
-        <div class="form-group">
-            <label>用户名</label>
-            <input type="text" id="authUsername" placeholder="输入用户名" autocomplete="username">
+<div class="login-page">
+    <!-- Left Brand Panel -->
+    <div class="brand-panel">
+        <div class="brand-content">
+            <span class="logo-icon">📍</span>
+            <h2>商家 POI 信息查询平台</h2>
+            <p class="tagline">
+                多渠道聚合搜索，精准获取商家联系方式。<br>
+                助力销售拓客、市场调研、商业分析。
+            </p>
+            <ul class="brand-features">
+                <li>
+                    <span class="feat-icon">🗺</span>
+                    <span>支持高德 / 百度 / 腾讯三大数据源</span>
+                </li>
+                <li>
+                    <span class="feat-icon">📱</span>
+                    <span>智能识别手机号与座机号</span>
+                </li>
+                <li>
+                    <span class="feat-icon">📊</span>
+                    <span>一键导出 Excel / CSV / JSON</span>
+                </li>
+                <li>
+                    <span class="feat-icon">🔍</span>
+                    <span>多关键词合并 · 深度区县搜索</span>
+                </li>
+            </ul>
         </div>
-        <div class="form-group">
-            <label>密码</label>
-            <input type="password" id="authPassword" placeholder="输入密码" autocomplete="current-password">
-        </div>
-        <button class="btn btn-primary" id="authBtn" onclick="doLogin()">登录</button>
-        <p><a href="javascript:toggleAuth()" id="authToggle">没有账号？去注册</a></p>
-        <div class="tier-info">
-            💡 免费版：每日 <strong>50次</strong> 搜索 · <strong>3次</strong> 导出<br>
-            ⋯⋯⋯⋯⋯⋯⋯⋯<br>
-            🏆 会员版：每日 <strong>5000次</strong> 搜索 · <strong>不限</strong> 导出 · 深度搜索
+    </div>
+
+    <!-- Right Login Panel -->
+    <div class="login-panel">
+        <div class="login-container">
+            <div class="product-name">📍 商家 POI 查询</div>
+            <div class="product-subtitle">登录您的账号以继续使用</div>
+
+            <!-- Login/Register Tabs -->
+            <div class="login-tabs">
+                <button class="login-tab active" data-tab="login" onclick="switchTab('login')">登录</button>
+                <button class="login-tab" data-tab="register" onclick="switchTab('register')">注册</button>
+            </div>
+
+            <!-- Alert message -->
+            <div class="login-alert" id="loginAlert"></div>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <div class="form-group">
+                    <label>邮箱地址</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✉</span>
+                        <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email" autofocus>
+                    </div>
+                    <div class="form-error" id="loginEmailError"></div>
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <div class="form-error" id="loginPasswordError"></div>
+                </div>
+                <button class="btn-login" id="loginBtn" onclick="submitLogin()">
+                    登录
+                </button>
+                <div class="login-footer">
+                    <a href="javascript:void(0)" class="forgot-pw">忘记密码？联系管理员重置</a>
+                </div>
+            </div>
+
+            <!-- Register Form (hidden by default) -->
+            <div id="registerForm" style="display:none">
+                <div class="form-group">
+                    <label>邮箱地址</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✉</span>
+                        <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
+                    </div>
+                    <div class="form-error" id="regEmailError"></div>
+                </div>
+                <div class="form-group">
+                    <label>设置密码</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="regPassword" placeholder="至少6位" autocomplete="new-password">
+                    </div>
+                    <div class="form-error" id="regPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="regConfirm" placeholder="再次输入密码">
+                    </div>
+                    <div class="form-error" id="regConfirmError"></div>
+                </div>
+                <button class="btn-login" id="registerBtn" onclick="submitRegister()">
+                    创建账号
+                </button>
+                <div class="login-footer">
+                    <span style="font-size:12px;color:var(--gray-400)">注册即表示同意服务条款</span>
+                </div>
+            </div>
+
+            <!-- Tier Info -->
+            <div class="tier-card">
+                <div class="tier-title">会员权益</div>
+                <div class="tier-row">
+                    <span class="tier-label">免费版</span>
+                    <span class="tier-value">每日 50 次搜索 · 3 次导出</span>
+                </div>
+                <div class="tier-row">
+                    <span class="tier-label" style="color:var(--primary);font-weight:600">🏆 会员版</span>
+                    <span class="tier-value" style="color:var(--primary)">每日 5000 次 · 不限导出 · 深度搜索</span>
+                </div>
+                <div class="tier-upgrade">
+                    <a href="/membership">了解会员计划 →</a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
 <script>
+// --- Tab switching ---
 let isLogin = true;
-function toggleAuth() {
-    isLogin = !isLogin;
-    document.getElementById('authBtn').textContent = isLogin ? '登录' : '注册';
-    document.getElementById('authToggle').textContent = isLogin ? '没有账号？去注册' : '已有账号？去登录';
+
+function switchTab(tab) {
+    isLogin = (tab === 'login');
+    document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.login-tab[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('loginAlert').className = 'login-alert';
+    // Focus first input
+    if (isLogin) {
+        document.getElementById('loginEmail').focus();
+    } else {
+        document.getElementById('regEmail').focus();
+    }
 }
 
-async function doLogin() {
-    const username = document.getElementById('authUsername').value.trim();
-    const password = document.getElementById('authPassword').value.trim();
-    if (!username || !password) { alert('请填写用户名和密码'); return; }
+// --- Alert helper ---
+function showAlert(msg, type) {
+    const el = document.getElementById('loginAlert');
+    el.textContent = msg;
+    el.className = 'login-alert ' + type;
+}
 
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+function hideAlert() {
+    document.getElementById('loginAlert').className = 'login-alert';
+}
+
+// --- Toast (for inline messages not in alert box) ---
+function showToast(msg, type) {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.3s';
+        setTimeout(() => el.remove(), 300);
+    }, 3000);
+}
+
+// --- Form validation ---
+function setFieldError(id, msg) {
+    const errEl = document.getElementById(id);
+    const input = errEl.parentElement.querySelector('input');
+    if (msg) {
+        errEl.textContent = msg;
+        errEl.classList.add('show');
+        if (input) input.classList.add('input-error');
+    } else {
+        errEl.textContent = '';
+        errEl.classList.remove('show');
+        if (input) input.classList.remove('input-error');
+    }
+}
+
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// --- Login ---
+async function submitLogin() {
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value;
+
+    setFieldError('loginEmailError', '');
+    setFieldError('loginPasswordError', '');
+    hideAlert();
+
+    if (!email) {
+        setFieldError('loginEmailError', '请输入邮箱地址');
+        document.getElementById('loginEmail').focus();
+        return;
+    }
+    if (!validateEmail(email)) {
+        setFieldError('loginEmailError', '请输入有效的邮箱地址');
+        document.getElementById('loginEmail').focus();
+        return;
+    }
+    if (!password) {
+        setFieldError('loginPasswordError', '请输入密码');
+        document.getElementById('loginPassword').focus();
+        return;
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> 登录中...';
+
     try {
-        const res = await fetch(endpoint, {
+        const res = await fetch('/api/auth/email-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
         if (data.success) {
             localStorage.setItem('qs_token', data.token);
             localStorage.setItem('qs_user', JSON.stringify(data));
-            window.location.href = '/';
+            showToast('登录成功，正在跳转...', 'success');
+            setTimeout(() => {
+                window.location.href = '/search';
+            }, 500);
         } else {
-            alert(data.error || '操作失败');
+            showAlert(data.error || '登录失败', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '登录';
         }
-    } catch (e) { alert('网络错误: ' + e.message); }
+    } catch (e) {
+        showAlert('网络错误: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '登录';
+    }
 }
 
-// Check if already logged in
-const token = localStorage.getItem('qs_token');
-if (token) { window.location.href = '/'; }
+// --- Register ---
+async function submitRegister() {
+    const email = document.getElementById('regEmail').value.trim().toLowerCase();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirm').value;
+
+    setFieldError('regEmailError', '');
+    setFieldError('regPasswordError', '');
+    setFieldError('regConfirmError', '');
+    hideAlert();
+
+    if (!email) {
+        setFieldError('regEmailError', '请输入邮箱地址');
+        document.getElementById('regEmail').focus();
+        return;
+    }
+    if (!validateEmail(email)) {
+        setFieldError('regEmailError', '请输入有效的邮箱地址');
+        document.getElementById('regEmail').focus();
+        return;
+    }
+    if (!password) {
+        setFieldError('regPasswordError', '请设置密码');
+        document.getElementById('regPassword').focus();
+        return;
+    }
+    if (password.length < 6) {
+        setFieldError('regPasswordError', '密码至少需要6位');
+        document.getElementById('regPassword').focus();
+        return;
+    }
+    if (password !== confirm) {
+        setFieldError('regConfirmError', '两次密码输入不一致');
+        document.getElementById('regConfirm').focus();
+        return;
+    }
+
+    const btn = document.getElementById('registerBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> 注册中...';
+
+    try {
+        const res = await fetch('/api/auth/email-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            localStorage.setItem('qs_token', data.token);
+            localStorage.setItem('qs_user', JSON.stringify(data));
+            showToast('注册成功，正在跳转...', 'success');
+            setTimeout(() => {
+                window.location.href = '/search';
+            }, 500);
+        } else {
+            showAlert(data.error || '注册失败', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '创建账号';
+        }
+    } catch (e) {
+        showAlert('网络错误: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '创建账号';
+    }
+}
+
+// --- Enter key support ---
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        if (isLogin) {
+            submitLogin();
+        } else {
+            submitRegister();
+        }
+    }
+});
+
+// --- Check if already logged in, redirect directly to search ---
+(function checkExistingSession() {
+    const token = localStorage.getItem('qs_token');
+    if (token) {
+        fetch('/api/auth/profile', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                window.location.href = '/search';
+            }
+        }).catch(() => {});
+    }
+})();
 </script>
 </body>
 </html>

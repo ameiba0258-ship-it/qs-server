@@ -15,6 +15,7 @@ TIER_LIMITS = {
     "free": {"daily_searches": 50, "daily_exports": 3, "deep_search": False},
     "premium": {"daily_searches": 5000, "daily_exports": 100, "deep_search": True},
     "enterprise": {"daily_searches": 50000, "daily_exports": 1000, "deep_search": True},
+    "admin": {"daily_searches": 999999, "daily_exports": 99999, "deep_search": True},
 }
 
 
@@ -206,6 +207,50 @@ if not admin:
     conn.commit()
 _ADMIN_EXISTS = True
 conn.close()
+
+
+
+
+def register_by_email(email, password):
+    """Register a new user using email as both username and email field."""
+    conn = _get_db()
+    try:
+        # Check if email already in use
+        existing = conn.execute("SELECT id FROM users WHERE email=? OR username=?", (email, email)).fetchone()
+        if existing:
+            return {"success": False, "error": "该邮箱已被注册"}
+        pw_hash, salt = _hash_password(password)
+        token = uuid.uuid4().hex
+        conn.execute("INSERT INTO users (username, password_hash, salt, email, token) VALUES (?,?,?,?,?)",
+                     (email, pw_hash, salt, email, token))
+        conn.commit()
+        return {"success": True, "token": token, "tier": "free", "username": email}
+    except sqlite3.IntegrityError:
+        return {"success": False, "error": "该邮箱已被注册"}
+    finally:
+        conn.close()
+
+
+def login_by_email(email, password):
+    """Login by email address (checks email column in users table)."""
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if not row:
+            # Also try username column for backward compatibility with old accounts
+            row = conn.execute("SELECT * FROM users WHERE username=?", (email,)).fetchone()
+        if not row:
+            return {"success": False, "error": "邮箱或密码错误"}
+        pw_hash, _ = _hash_password(password, row["salt"])
+        if pw_hash != row["password_hash"]:
+            return {"success": False, "error": "邮箱或密码错误"}
+        # Generate new token
+        token = uuid.uuid4().hex
+        conn.execute("UPDATE users SET token=? WHERE id=?", (token, row["id"]))
+        conn.commit()
+        return {"success": True, "token": token, "tier": row["tier"], "username": row["username"]}
+    finally:
+        conn.close()
 
 
 # --- Payment System ---

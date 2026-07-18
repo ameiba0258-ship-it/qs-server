@@ -460,10 +460,11 @@ async def download_result(task_id: str, fmt: str = "xlsx"):
 
 @app.get("/")
 async def serve_index():
-    index_path = BASE_DIR / "static" / "index.html"
-    if index_path.exists():
-        return HTMLResponse(index_path.read_text(encoding="utf-8"))
-    return {"message": "Frontend not found"}
+    """Root now serves the login page. Authenticated users redirect to /search."""
+    login_path = BASE_DIR / "static" / "auth" / "login.html"
+    if login_path.exists():
+        return HTMLResponse(login_path.read_text(encoding="utf-8"))
+    return {"message": "Login page not found"}
 
 @app.get("/css/{filename}")
 async def serve_css(filename: str):
@@ -483,8 +484,18 @@ async def serve_js(filename: str):
 
 # --- Auth & Login Routes ---
 
+
+@app.get("/search")
+async def serve_search():
+    """Main search interface — protected by frontend auth check."""
+    search_path = BASE_DIR / "static" / "index.html"
+    if search_path.exists():
+        return HTMLResponse(search_path.read_text(encoding="utf-8"))
+    return {"message": "Search page not found"}
+
 @app.get("/login")
 async def login_page():
+    """Keep /login for backward compatibility — render same page."""
     login_path = BASE_DIR / "static" / "auth" / "login.html"
     if login_path.exists():
         return HTMLResponse(login_path.read_text(encoding="utf-8"))
@@ -521,6 +532,38 @@ async def profile(request: Request):
         return {"success": False, "error": "登录已过期"}
     info = auth_db.get_user_info(user["id"])
     return {"success": True, "user": info}
+
+
+
+@app.post("/api/auth/email-register")
+async def email_register(data: dict):
+    """Register with email and password."""
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "").strip()
+    if not email or not password:
+        return {"success": False, "error": "邮箱和密码不能为空"}
+    if "@" not in email or "." not in email:
+        return {"success": False, "error": "请输入有效的邮箱地址"}
+    if len(password) < 6:
+        return {"success": False, "error": "密码至少6位"}
+    import auth_db
+    result = auth_db.register_by_email(email, password)
+    if result.get("success"):
+        result["email"] = email
+    return result
+
+
+@app.post("/api/auth/email-login")
+async def email_login(data: dict):
+    """Login with email and password."""
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "").strip()
+    if not email or not password:
+        return {"success": False, "error": "邮箱和密码不能为空"}
+    import auth_db
+    result = auth_db.login_by_email(email, password)
+    return result
+
 
 # --- Membership & Admin Routes ---
 

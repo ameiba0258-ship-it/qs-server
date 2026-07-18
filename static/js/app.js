@@ -533,9 +533,9 @@ async function checkAuth() {
     const loginBtn = document.getElementById('loginLink');
     if (!userInfo) return;
     
-    // Show default status for non-logged-in
-    if (!token || !loginBtn) {
-        userInfo.innerHTML = '<span style="font-size:11px;color:var(--gray-400)">免费版 50次/天</span>';
+    // Redirect to login page if no token
+    if (!token) {
+        window.location.href = '/';
         return;
     }
     try {
@@ -547,15 +547,21 @@ async function checkAuth() {
             const u = data.user;
             const tierLabel = {free:'免费',premium:'会员',enterprise:'企业',admin:'管理员'};
             userInfo.innerHTML = '<span style="font-size:12px;color:var(--gray-700)">👤 ' + u.username + '</span>' +
-                ' <span style="font-size:11px;color:var(--gray-500)">' + tierLabel[u.tier] || u.tier + '</span>' +
+                ' <span style="font-size:11px;color:var(--gray-500)">' + (tierLabel[u.tier] || u.tier) + '</span>' +
                 ' <span style="font-size:11px;color:' + (u.today_searches >= u.daily_limit ? 'var(--danger)' : 'var(--success)') + '">' +
                 (u.daily_limit > 999 ? '∞' : (u.daily_limit - u.today_searches) + '/' + u.daily_limit) + '次</span>' +
                 ' <a href="javascript:logout()" style="font-size:11px;color:var(--gray-400);text-decoration:none">退出</a>';
-            document.getElementById('loginLink').style.display = 'none';
+            if (document.getElementById('loginLink')) {
+                document.getElementById('loginLink').style.display = 'none';
+            }
         } else {
             localStorage.removeItem('qs_token');
+            window.location.href = '/';
         }
-    } catch(e) {}
+    } catch(e) {
+        // Network error — still redirect to login to be safe
+        window.location.href = '/';
+    }
 }
 
 function logout() {
