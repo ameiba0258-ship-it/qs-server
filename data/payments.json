@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "username": "fulltest@test.com",
+    "amount": "99",
+    "method": "微信",
+    "status": "confirmed",
+    "created_at": "2026-07-18 20:40:18",
+    "confirmed_at": "2026-07-18 20:40:18"
+  }
+]

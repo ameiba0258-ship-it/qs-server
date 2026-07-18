@@ -98,6 +98,16 @@ def validate_token(token):
         # Check user token
         row = conn.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
         if row:
+            # Auto-downgrade if membership expired
+            if row["tier"] in ("premium", "enterprise") and row["expiry_date"]:
+                try:
+                    expiry_dt = datetime.strptime(row["expiry_date"], "%Y-%m-%d")
+                    if expiry_dt < datetime.now():
+                        conn.execute("UPDATE users SET tier='free', expiry_date=NULL WHERE id=?", (row["id"],))
+                        conn.commit()
+                        return {"id": row["id"], "username": row["username"], "tier": "free"}
+                except ValueError:
+                    pass
             return {"id": row["id"], "username": row["username"], "tier": row["tier"]}
         
         # Check API token
@@ -140,10 +150,20 @@ def increment_usage(user_id, action="search", amount=1):
 def get_user_info(user_id):
     conn = _get_db()
     try:
-        row = conn.execute("SELECT id, username, email, tier, created_at FROM users WHERE id=?", (user_id,)).fetchone()
+        row = conn.execute("SELECT id, username, email, tier, created_at, expiry_date FROM users WHERE id=?", (user_id,)).fetchone()
         if row:
             today_count = check_usage(user_id)
             tier_info = TIER_LIMITS.get(row["tier"], TIER_LIMITS["free"])
+            
+            # Check expiry
+            expiry_str = row["expiry_date"] if row["expiry_date"] else None
+            is_expired = False
+            days_remaining = None
+            if expiry_str:
+                expiry_dt = datetime.strptime(expiry_str, "%Y-%m-%d")
+                days_remaining = (expiry_dt - datetime.now()).days
+                is_expired = days_remaining < 0
+            
             return {
                 "id": row["id"],
                 "username": row["username"],
@@ -152,6 +172,9 @@ def get_user_info(user_id):
                 "today_searches": today_count,
                 "daily_limit": tier_info["daily_searches"],
                 "deep_search": tier_info["deep_search"],
+                "expiry_date": expiry_str,
+                "days_remaining": max(0, days_remaining) if days_remaining is not None else None,
+                "is_expired": is_expired,
             }
         return None
     finally:
@@ -160,6 +183,97 @@ def get_user_info(user_id):
 
 # Initialize DB on import
 init_db()
+
+
+
+
+
+# === Database Migration: add expiry_date column ===
+def _migrate_db():
+    """Add expiry_date column to users table if not exists."""
+    conn = _get_db()
+    try:
+        cursor = conn.execute("PRAGMA table_info(users)")
+        cols = [row[1] for row in cursor.fetchall()]
+        if "expiry_date" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN expiry_date TEXT DEFAULT NULL")
+            conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+_migrate_db()
+# === End Migration ===
+
+def check_and_downgrade_expired():
+    """Check all premium/enterprise users and auto-downgrade if expired."""
+    conn = _get_db()
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        rows = conn.execute(
+            "SELECT id, username, tier FROM users WHERE tier IN ('premium','enterprise') AND expiry_date IS NOT NULL AND expiry_date < ?",
+            (today,)
+        ).fetchall()
+        downgraded = []
+        for row in rows:
+            conn.execute("UPDATE users SET tier='free', expiry_date=NULL WHERE id=?", (row["id"],))
+            downgraded.append(row["username"])
+        conn.commit()
+        return downgraded
+    finally:
+        conn.close()
+
+
+def check_user_expiry(user_id):
+    """Check if a specific user's membership has expired. Auto-downgrades if yes."""
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT id, username, tier, expiry_date FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row or row["tier"] not in ("premium", "enterprise"):
+            return False
+        if not row["expiry_date"]:
+            return False  # No expiry set = permanent (legacy/admin)
+        expiry = datetime.strptime(row["expiry_date"], "%Y-%m-%d")
+        if expiry < datetime.now():
+            conn.execute("UPDATE users SET tier='free', expiry_date=NULL WHERE id=?", (user_id,))
+            conn.commit()
+            return True  # was downgraded
+        return False
+    finally:
+        conn.close()
+
+
+def add_payment_record(username, amount, method="wechat"):
+    """Record a confirmed payment in payments.json."""
+    payments_path = os.path.join(os.path.dirname(DB_PATH), "payments.json")
+    os.makedirs(os.path.dirname(payments_path), exist_ok=True)
+    payments = []
+    if os.path.exists(payments_path):
+        with open(payments_path, "r", encoding="utf-8") as f:
+            payments = json.load(f)
+    payments.append({
+        "id": len(payments) + 1,
+        "username": username,
+        "amount": amount,
+        "method": method,
+        "status": "confirmed",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "confirmed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    with open(payments_path, "w", encoding="utf-8") as f:
+        json.dump(payments, f, ensure_ascii=False, indent=2)
+    return True
+
+
+def get_user_payments(username):
+    """Get all payment records for a user."""
+    payments_path = os.path.join(os.path.dirname(DB_PATH), "payments.json")
+    if not os.path.exists(payments_path):
+        return []
+    with open(payments_path, "r", encoding="utf-8") as f:
+        all_payments = json.load(f)
+    return [p for p in all_payments if p.get("username") == username and p.get("status") == "confirmed"]
 
 
 def set_user_tier(target_username, new_tier, admin_username="admin"):
@@ -171,9 +285,17 @@ def set_user_tier(target_username, new_tier, admin_username="admin"):
         row = conn.execute("SELECT id FROM users WHERE username=?", (target_username,)).fetchone()
         if not row:
             return {"success": False, "error": "用户不存在"}
-        conn.execute("UPDATE users SET tier=? WHERE username=?", (new_tier, target_username))
+        
+        # If upgrading to premium/enterprise, set expiry to 30 days / 365 days from now
+        expiry = None
+        if new_tier in ("premium", "enterprise"):
+            days = 30 if new_tier == "premium" else 365
+            expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+        
+        conn.execute("UPDATE users SET tier=?, expiry_date=? WHERE username=?",
+                     (new_tier, expiry, target_username))
         conn.commit()
-        return {"success": True, "message": f"{target_username} 已升级为 {new_tier}"}
+        return {"success": True, "message": f"{target_username} 已升级为 {new_tier}" + (f"，到期 {expiry}" if expiry else "")}
     finally:
         conn.close()
 
@@ -310,22 +432,22 @@ def get_pending_payments() -> list:
     return []
 
 
-def confirm_payment(notification_id: int) -> bool:
-    """Admin confirms payment."""
+def confirm_payment(notification_id: int) -> dict:
+    """Admin confirms payment. Returns dict with confirmed payment info."""
+    result = {"found": False}
     if os.path.exists(PAYMENT_DB):
         with open(PAYMENT_DB, "r", encoding="utf-8") as f:
             payments = json.load(f)
-        found = False
         for p in payments:
             if p["id"] == notification_id:
                 p["status"] = "confirmed"
-                found = True
+                p["confirmed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                result = {"found": True, "username": p.get("username"), "amount": p.get("amount")}
                 break
-        if found:
+        if result["found"]:
             with open(PAYMENT_DB, "w", encoding="utf-8") as f:
                 json.dump(payments, f, ensure_ascii=False, indent=2)
-        return found
-    return False
+    return result
 
 
 # --- API Token Management ---

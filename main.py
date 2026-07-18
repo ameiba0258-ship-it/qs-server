@@ -632,6 +632,30 @@ async def admin_reset_password(data: dict, request: Request):
     return result
 
 
+
+
+@app.get("/api/auth/payment-history")
+async def payment_history(request: Request):
+    """Get payment history for authenticated user."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user:
+        return {"success": False, "error": "登录已过期"}
+    payments = auth_db.get_user_payments(user["username"])
+    # Also get pending notifications
+    pending_notifs = []
+    import json, os
+    notif_path = os.path.join(os.path.dirname(__file__), "data", "payments.json")
+    if os.path.exists(notif_path):
+        with open(notif_path, "r") as f:
+            all_notifs = json.load(f)
+        pending_notifs = [n for n in all_notifs if n.get("username") == user["username"] and n.get("status") == "pending"]
+    return {"success": True, "payments": payments, "pending_notifications": pending_notifs}
+
+
 # --- Membership & Admin Routes ---
 
 @app.get("/membership")

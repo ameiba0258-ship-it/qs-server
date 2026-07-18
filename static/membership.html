@@ -1,105 +1,266 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>会员升级 - 商家信息查询</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
-        body { background: var(--gray-100); }
-        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
-        h1 { text-align: center; font-size: 24px; margin-bottom: 8px; }
-        .subtitle { text-align: center; color: var(--gray-500); margin-bottom: 30px; }
-        .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .plan { background: #fff; border-radius: 8px; padding: 28px; box-shadow: var(--shadow); border: 2px solid var(--gray-200); position: relative; }
-        .plan.premium { border-color: var(--primary); }
-        .plan h2 { font-size: 18px; margin-bottom: 6px; }
-        .plan .price { font-size: 28px; font-weight: 700; color: var(--primary); margin: 12px 0; }
-        .plan .price small { font-size: 14px; font-weight: 400; color: var(--gray-500); }
-        .plan ul { list-style: none; padding: 0; margin: 16px 0; }
-        .plan li { padding: 6px 0; font-size: 14px; color: var(--gray-700); }
-        .plan li::before { content: '✅ '; }
-        .plan .btn { width: 100%; justify-content: center; padding: 12px; margin-top: 10px; }
-        .badge { position: absolute; top: -10px; right: 16px; background: var(--primary); color: #fff; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
-        .payment-section { background: #fff; border-radius: 8px; padding: 24px; max-width: 500px; margin: 30px auto; text-align: center; box-shadow: var(--shadow); }
-        .payment-section h3 { margin-bottom: 12px; }
-        .payment-section input { padding: 8px; border: 1px solid var(--gray-300); border-radius: 4px; width: 80%; margin: 6px 0; }
-        .payment-section .qr-placeholder { width: 200px; height: 200px; margin: 15px auto; background: var(--gray-100); border: 2px dashed var(--gray-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--gray-400); overflow: hidden; }
-        .payment-section .qr-placeholder img { width: 100%; height: 100%; object-fit: contain; }
-        .note { font-size: 12px; color: var(--gray-400); text-align: center; margin-top: 20px; line-height: 1.6; }
-        @media (max-width: 640px) { .plans { grid-template-columns: 1fr; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会员 · 商家 POI 查询平台</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Topbar */
+.topbar {
+    position: sticky; top: 0; z-index: 200;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px; height: 56px;
+    display: flex; align-items: center;
+}
+.topbar-inner {
+    width: 100%; max-width: 900px; margin: 0 auto;
+    display: flex; align-items: center; gap: 24px;
+}
+.topbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #1e293b; }
+.topbar-brand .logo { font-size: 22px; }
+.topbar-brand .name { font-size: 15px; font-weight: 700; }
+.topbar-nav { display: flex; gap: 4px; margin-left: auto; }
+.topbar-nav a { padding: 6px 12px; font-size: 13px; font-weight: 500; color: #64748b; text-decoration: none; border-radius: 6px; transition: all 0.2s; }
+.topbar-nav a:hover { color: #1e293b; background: #f1f5f9; }
+.topbar-nav a.active { color: #2563eb; background: #eff6ff; }
+
+/* Hero */
+.hero {
+    text-align: center;
+    padding: 48px 24px 32px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff;
+}
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.4px; }
+.hero p { font-size: 14px; color: rgba(255,255,255,0.6); }
+
+/* Plans */
+.plans-wrap {
+    max-width: 820px; margin: -20px auto 0;
+    padding: 0 24px 40px;
+    position: relative; z-index: 2;
+}
+.plans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.plan-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    border: 2px solid #e2e8f0;
+    padding: 32px;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.plan-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+.plan-card.premium { border-color: #2563eb; }
+.plan-card .badge {
+    position: absolute; top: -10px; right: 20px;
+    background: #2563eb; color: #fff;
+    padding: 3px 14px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+}
+.plan-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.plan-card .sub { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+.plan-card .price { font-size: 32px; font-weight: 700; color: #1e293b; }
+.plan-card .price small { font-size: 14px; font-weight: 400; color: #94a3b8; }
+.plan-card .price .free { color: #64748b; }
+.plan-card ul { list-style: none; margin: 16px 0; }
+.plan-card li { padding: 7px 0; font-size: 13px; color: #475569; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f8fafc; }
+.plan-card li:last-child { border-bottom: none; }
+.plan-card li .check { color: #059669; font-weight: 700; flex-shrink: 0; }
+.plan-card li .cross { color: #94a3b8; flex-shrink: 0; }
+
+.plan-card .btn-plan {
+    width: 100%; padding: 11px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; border: none; cursor: pointer;
+    transition: all 0.2s; margin-top: 8px;
+}
+.plan-card .btn-plan.primary { background: #111827; color: #fff; }
+.plan-card .btn-plan.primary:hover { background: #1f2937; }
+.plan-card .btn-plan.outline { background: #f1f5f9; color: #64748b; }
+.plan-card .btn-plan.outline:hover { background: #e2e8f0; }
+
+/* Payment section */
+.payment-card {
+    max-width: 500px; margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+    padding: 28px 32px;
+    text-align: center;
+}
+.payment-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.payment-card .desc { font-size: 13px; color: #94a3b8; margin-bottom: 16px; }
+
+.qr-box {
+    width: 180px; height: 180px;
+    margin: 0 auto 12px;
+    background: #f8fafc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #94a3b8;
+    overflow: hidden;
+}
+.qr-box img { width: 100%; height: 100%; object-fit: contain; }
+
+.payment-card .amount { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+.payment-card .contact-info { font-size: 13px; color: #64748b; margin-bottom: 4px; }
+
+.payment-divider { border: none; border-top: 1px solid #f1f5f9; margin: 16px 0; }
+
+.payment-card .input-group {
+    display: flex; gap: 8px; margin: 10px 0;
+}
+.payment-card input {
+    flex: 1; padding: 9px 14px;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    font-size: 13px; outline: none;
+}
+.payment-card input:focus { border-color: #2563eb; }
+.payment-card .btn-pay {
+    padding: 9px 20px; background: #059669; color: #fff;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+}
+.payment-card .btn-pay:hover { background: #047857; }
+.payment-card .pay-result { font-size: 13px; margin-top: 10px; }
+
+/* Footer */
+.footer-note { text-align: center; padding: 24px 24px 48px; font-size: 12px; color: #94a3b8; }
+.footer-note a { color: #64748b; text-decoration: none; }
+.footer-note a:hover { color: #1e293b; }
+
+/* Current plan badge */
+.current-badge {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    background: #ecfdf5; color: #059669;
+    margin-left: 6px;
+}
+
+@media (max-width: 700px) {
+    .plans-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 22px; }
+    .plan-card { padding: 24px; }
+    .payment-card { padding: 20px; }
+}
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>📍 会员升级</h1>
-    <p class="subtitle">按需选择适合你的方案</p>
 
-    <div class="plans">
-        <div class="plan">
+<header class="topbar">
+    <div class="topbar-inner">
+        <a href="/search" class="topbar-brand">
+            <span class="logo">📍</span>
+            <span class="name">商家 POI 查询</span>
+        </a>
+        <nav class="topbar-nav">
+            <a href="/search">搜索</a>
+            <a href="/profile">个人中心</a>
+            <a href="/membership" class="active">会员</a>
+        </nav>
+    </div>
+</header>
+
+<section class="hero">
+    <h1>选择适合您的方案</h1>
+    <p>按需选择，随时升级</p>
+</section>
+
+<div class="plans-wrap">
+    <div class="plans-grid">
+        <!-- Free Plan -->
+        <div class="plan-card" id="freePlan">
             <h2>免费版</h2>
-            <div class="price">¥0 <small>/ 永久</small></div>
+            <div class="sub">适合个人日常查询</div>
+            <div class="price"><span class="free">¥0</span> <small>永久</small></div>
             <ul>
-                <li>每日 50 次搜索</li>
-                <li>每日 3 次导出</li>
-                <li>单关键词搜索</li>
-                <li>基础数据源</li>
+                <li><span class="check">✅</span> 每日 50 次搜索</li>
+                <li><span class="cross">—</span> 每日 3 次导出</li>
+                <li><span class="cross">—</span> 单关键词搜索</li>
+                <li><span class="cross">—</span> 基础数据源</li>
+                <li><span class="cross">—</span> 不支持深度搜索</li>
             </ul>
-            <button class="btn btn-outline" onclick="location.href='/'">开始使用</button>
+            <button class="btn-plan outline" onclick="location.href='/search'">开始使用</button>
         </div>
-        <div class="plan premium">
+
+        <!-- Premium Plan -->
+        <div class="plan-card premium" id="premiumPlan">
             <span class="badge">热销</span>
             <h2>🏆 会员版</h2>
+            <div class="sub">适合销售团队 · 高效拓客</div>
             <div class="price">¥<span id="planPrice">99</span> <small>/ 月</small></div>
             <ul>
-                <li>每日 5000 次搜索</li>
-                <li>不限次数导出</li>
-                <li>多关键词搜索</li>
-                <li>深度搜索（按区县/城市拆分）</li>
-                <li>全部数据源（高德/百度/腾讯）</li>
-                <li>优先技术支持</li>
+                <li><span class="check">✅</span> 每日 5,000 次搜索</li>
+                <li><span class="check">✅</span> 不限次数导出</li>
+                <li><span class="check">✅</span> 多关键词合并搜索</li>
+                <li><span class="check">✅</span> 全部数据源（高德/百度/腾讯）</li>
+                <li><span class="check">✅</span> 深度搜索（按区县/城市拆分）</li>
+                <li><span class="check">✅</span> 优先技术支持</li>
             </ul>
-            <button class="btn btn-primary" onclick="scrollToPayment()">立即开通</button>
+            <button class="btn-plan primary" id="premiumBtn" onclick="scrollToPayment()">立即开通</button>
         </div>
     </div>
 
-    <div class="payment-section" id="paymentSection">
-        <h3>💳 付款开通</h3>
-        <p style="font-size:13px;color:var(--gray-500)">扫描下方二维码付款后，提交通知即可开通</p>
-        <div class="qr-placeholder" id="qrContainer">
-            <span id="qrPlaceholder">加载中...</span>
-        </div>
-        <p style="font-size:13px;margin:8px 0">付款金额: ¥<span id="payAmount">99</span></p>
-        <p style="font-size:13px;color:var(--gray-500)">微信号: <span id="wechatId">-</span></p>
-        <p style="font-size:13px;color:var(--gray-500)">支付宝: <span id="alipayAccount">-</span></p>
-        
-        <hr style="margin:16px 0;border:none;border-top:1px solid var(--gray-100)">
-        <p style="font-size:13px;font-weight:500">已付款？提交你的联系方式，管理员确认后开通</p>
-        <input type="text" id="payContact" placeholder="你的微信号或手机号">
-        <button class="btn btn-success" onclick="submitPayment()" style="margin-top:8px">
-            ✅ 我已付款，申请开通
-        </button>
-        <div id="payResult" style="font-size:13px;margin-top:10px"></div>
-    </div>
+    <!-- Payment Section -->
+    <div style="margin-top:32px" id="paymentSection">
+        <div class="payment-card">
+            <h3>💳 付款开通</h3>
+            <p class="desc">扫描下方二维码付款后，提交通知即可开通</p>
 
-    <p class="note">
-        企业版 / 批量采购 / 定制开发请联系客服<br>
-        <a href="/">返回首页</a> · <a href="/admin">管理员入口</a>
-    </p>
+            <div class="qr-box" id="qrContainer">
+                <span id="qrPlaceholder">加载中...</span>
+            </div>
+
+            <div class="amount">¥<span id="payAmount">99</span></div>
+            <div class="contact-info">微信号: <span id="wechatId">-</span></div>
+            <div class="contact-info">支付宝: <span id="alipayAccount">-</span></div>
+
+            <hr class="payment-divider">
+
+            <p style="font-size:13px;font-weight:500;margin-bottom:8px">已付款？提交通知，管理员确认后开通</p>
+            <div class="input-group">
+                <input type="text" id="payContact" placeholder="你的微信号或手机号">
+                <button class="btn-pay" onclick="submitPayment()">提交</button>
+            </div>
+            <div class="pay-result" id="payResult"></div>
+        </div>
+    </div>
+</div>
+
+<div class="footer-note">
+    企业版 / 批量采购 / 定制开发请联系客服<br>
+    <a href="/search">返回首页</a> · <a href="/admin">管理员入口</a>
 </div>
 
 <script>
 async function loadPaymentConfig() {
     try {
-        const res = await fetch('/api/payment/config');
-        const d = await res.json();
+        const r = await fetch('/api/payment/config');
+        const d = await r.json();
         if (d.success && d.config) {
             const c = d.config;
             document.getElementById('wechatId').textContent = c.wechat_id || '未设置';
             document.getElementById('alipayAccount').textContent = c.alipay_account || '未设置';
             document.getElementById('payAmount').textContent = c.price || '99';
             document.getElementById('planPrice').textContent = c.price || '99';
-            
             const qr = document.getElementById('qrContainer');
             if (c.qr_code_url) {
                 qr.innerHTML = '<img src="' + c.qr_code_url + '" alt="收款码">';
@@ -110,32 +271,51 @@ async function loadPaymentConfig() {
     } catch(e) {}
 }
 
+async function checkCurrentPlan() {
+    const token = localStorage.getItem('qs_token');
+    if (!token) return;
+    try {
+        const r = await fetch('/api/auth/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+        const d = await r.json();
+        if (d.success && (d.user.tier === 'premium' || d.user.tier === 'enterprise')) {
+            document.getElementById('premiumBtn').textContent = '✅ 当前方案';
+            document.getElementById('premiumBtn').disabled = true;
+            document.getElementById('premiumBtn').style.background = '#e2e8f0';
+            document.getElementById('premiumBtn').style.color = '#64748b';
+            document.getElementById('premiumBtn').style.cursor = 'default';
+        }
+    } catch(e) {}
+}
+
 function scrollToPayment() {
-    document.getElementById('paymentSection').scrollIntoView({behavior:'smooth'});
+    document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function submitPayment() {
     const token = localStorage.getItem('qs_token');
-    if (!token) { alert('请先登录后再提交付款通知'); window.location.href='/'; return; }
+    if (!token) { alert('请先登录后再提交付款通知'); window.location.href = '/'; return; }
     const contact = document.getElementById('payContact').value.trim();
-    if (!contact) { alert('请输入你的联系方式（微信号或手机号）'); return; }
-    
+    if (!contact) { alert('请输入你的联系方式'); return; }
     try {
-        const res = await fetch('/api/payment/notify', {
-            method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-            body: JSON.stringify({contact})
+        const r = await fetch('/api/payment/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ contact })
         });
-        const d = await res.json();
+        const d = await r.json();
         const el = document.getElementById('payResult');
         if (d.success) {
-            el.innerHTML = '<span style="color:var(--success)">✅ 已通知管理员，将在24小时内为您开通会员</span>';
+            el.innerHTML = '<span style="color:#059669;font-weight:500">✅ 已提交，管理员将在24小时内为您开通</span>';
         } else {
-            el.innerHTML = '<span style="color:var(--danger)">❌ ' + (d.error||'提交失败') + '</span>';
+            el.innerHTML = '<span style="color:#dc2626">❌ ' + (d.error || '提交失败') + '</span>';
         }
-    } catch(e) { alert('网络错误'); }
+    } catch(e) {
+        document.getElementById('payResult').innerHTML = '<span style="color:#dc2626">❌ 网络错误</span>';
+    }
 }
 
 loadPaymentConfig();
+checkCurrentPlan();
 </script>
 </body>
 </html>

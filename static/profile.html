@@ -194,16 +194,24 @@ body {
                 <span class="value" id="pEmail">-</span>
             </div>
             <div class="info-row">
-                <span class="label">用户名</span>
-                <span class="value" id="pUsername">-</span>
-            </div>
-            <div class="info-row">
                 <span class="label">会员等级</span>
                 <span class="value" id="pTier">-</span>
+            </div>
+            <div class="info-row" id="pExpiryRow">
+                <span class="label">会员到期</span>
+                <span class="value" id="pExpiry">-</span>
             </div>
             <div class="info-row">
                 <span class="label">注册时间</span>
                 <span class="value" id="pCreated">-</span>
+            </div>
+            <div id="pExpiryWarning" style="display:none;margin-top:12px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e">
+                ⏰ 您的会员即将到期，请及时续费以避免影响使用。<br>
+                <a href="/membership" style="color:#2563eb;font-weight:500;text-decoration:none">立即续费 →</a>
+            </div>
+            <div id="pExpiredWarning" style="display:none;margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:13px;color:#991b1b">
+                ❌ 您的会员已过期，部分功能已受限。<br>
+                <a href="/membership" style="color:#2563eb;font-weight:500;text-decoration:none">重新开通 →</a>
             </div>
         </div>
 
@@ -222,6 +230,17 @@ body {
                     </div>
                     <div class="usage-bar"><div class="fill" id="pUsageBar" style="width:0%"></div></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        <div class="card" id="paymentCard" style="display:none">
+            <h2>💳 付款记录</h2>
+            <div id="paymentList">
+                <p style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">暂无付款记录</p>
+            </div>
+            <div id="pendingPaymentNote" style="display:none;margin-top:12px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e">
+                ⏳ 您有一条付款通知待管理员确认
             </div>
         </div>
 
@@ -287,12 +306,34 @@ async function loadProfile() {
 
         // Account info
         document.getElementById('pEmail').textContent = esc(u.username);
-        document.getElementById('pUsername').textContent = esc(u.username);
         
         // Tier badge
         const tierLabels = { free: '免费版', premium: '会员版', enterprise: '企业版', admin: '管理员' };
         const tierBadges = { free: 'badge-free', premium: 'badge-premium', enterprise: 'badge-enterprise', admin: 'badge-admin' };
         document.getElementById('pTier').innerHTML = '<span class="badge ' + (tierBadges[u.tier] || 'badge-free') + '">' + (tierLabels[u.tier] || u.tier) + '</span>';
+
+        // Expiry info
+        const expiryEl = document.getElementById('pExpiry');
+        const expiryRow = document.getElementById('pExpiryRow');
+        const expiryWarning = document.getElementById('pExpiryWarning');
+        const expiredWarning = document.getElementById('pExpiredWarning');
+        
+        if (u.tier === 'premium' || u.tier === 'enterprise') {
+            expiryRow.style.display = 'flex';
+            if (u.is_expired) {
+                expiryEl.innerHTML = '<span style="color:#dc2626;font-weight:600">已过期</span>';
+                if (expiredWarning) expiredWarning.style.display = 'block';
+            } else if (u.expiry_date) {
+                const days = u.days_remaining;
+                expiryEl.textContent = u.expiry_date + ' (' + days + ' 天)';
+                if (days <= 7 && days >= 0) {
+                    if (expiryWarning) expiryWarning.style.display = 'block';
+                }
+            }
+        } else {
+            expiryRow.style.display = u.tier === 'admin' ? 'none' : 'flex';
+            expiryEl.textContent = u.tier === 'admin' ? '-' : '永久免费';
+        }
 
         // Created date
         document.getElementById('pCreated').textContent = u.created_at || '-';
@@ -316,6 +357,31 @@ async function loadProfile() {
         // Show content
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('profileContent').style.display = 'block';
+
+        // Load payment history
+        try {
+            const pr = await fetch('/api/auth/payment-history', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const pd = await pr.json();
+            if (pd.success) {
+                const payments = pd.payments || [];
+                const pending = pd.pending_notifications || [];
+                
+                if (payments.length > 0) {
+                    document.getElementById('paymentCard').style.display = 'block';
+                    document.getElementById('paymentList').innerHTML = payments.map(p => 
+                        '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">' +
+                        '<span>¥' + (p.amount || '99') + ' · ' + (p.method || '微信') + '</span>' +
+                        '<span style="color:#6b7280">' + (p.confirmed_at || p.created_at || '') + '</span>' +
+                        '</div>'
+                    ).join('');
+                }
+                if (pending.length > 0) {
+                    document.getElementById('pendingPaymentNote').style.display = 'block';
+                }
+            }
+        } catch(e) {}
 
     } catch(e) {
         document.getElementById('loadingState').textContent = '加载失败，请刷新重试';
