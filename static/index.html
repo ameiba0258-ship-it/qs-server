@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>商家 POI 查询 · 企业信息检索平台</title>
+<title>区域搜索 · 商家 POI 查询</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
 /* ============================================
@@ -1066,4 +1066,114 @@ body {
             <select id="filterPoiType"><option value="">经营类型</option></select>
             <button class="btn-outline-light" id="btnBatch" onclick="startBatchSearch()">📥 批量</button>
         </div>
+    </div>
+</section>
 
+<main class="main-content">
+
+    <!-- Batch Progress -->
+    <div class="batch-progress" id="batchProgress">
+        <div class="progress-header">
+            <span class="progress-text" id="batchProgressText">准备中...</span>
+            <span class="download-actions" id="downloadActions"></span>
+        </div>
+        <div class="bar-track">
+            <div class="bar-fill" id="batchProgressFill" style="width:0%"></div>
+        </div>
+    </div>
+
+    <!-- Results Card -->
+    <div class="results-card" id="resultsCard">
+        <div class="results-toolbar">
+            <div class="results-info" id="resultsInfo">暂无数据</div>
+            <div class="results-actions" id="resultActions">
+                <button class="btn-toolbar primary" onclick="exportAllResults()">📥 导出</button>
+                <button class="btn-toolbar" onclick="exportCSV()">📄 CSV</button>
+                <button class="btn-toolbar" onclick="copyTable()">📋 复制</button>
+                <button class="btn-toolbar" onclick="showEmailModal()">✉ 发送到邮箱</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>商家名称</th>
+                        <th>经营类型</th>
+                        <th>📱 手机号</th>
+                        <th>📞 座机</th>
+                        <th>地址</th>
+                        <th>城市</th>
+                        <th>区县</th>
+                        <th>省份</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+            <div class="icon">📍</div>
+            <p id="emptyStateText">输入关键词后点击搜索</p>
+            <p class="desc">支持高德 / 百度 / 腾讯 三大数据源，多关键词合并搜索</p>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrap" id="pagination"></div>
+    </div>
+
+</main>
+
+<!-- ============ EMAIL MODAL ============ -->
+<div class="config-modal-overlay" id="emailModal">
+    <div class="config-modal" style="max-width:380px">
+        <h2>✉ 发送到邮箱</h2>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px">将结果文件发送到您的邮箱</p>
+        <div class="field">
+            <label>接收邮箱</label>
+            <input type="email" id="emailTarget" placeholder="your@email.com" autocomplete="email" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">
+            <span id="emailExportInfo">当前结果将以 Excel 附件发送</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeEmailModal()">取消</button>
+            <button class="btn btn-primary" id="emailSendBtn" onclick="sendToEmail()">发送</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ============ CONFIG MODAL ============ -->
+<div class="config-modal-overlay" id="configModal">
+    <div class="config-modal">
+        <h2>⚙️ API 配置</h2>
+
+        <div class="field">
+            <label>📍 高德地图 <span id="amapStatus" style="font-weight:600;color:var(--accent)">已配置</span></label>
+            <input type="text" id="configAmapKey" placeholder="免费 5000次/天">
+            <p class="hint">lbs.amap.com → 控制台 → 应用管理 → 创建应用 → Key（Web服务）</p>
+        </div>
+        <div class="field" style="padding-top:12px;border-top:1px solid var(--border)">
+            <label>🗺 百度地图 <span id="baiduStatus" style="font-weight:600;color:var(--accent)">已配置</span></label>
+            <input type="text" id="configBaiduKey" placeholder="免费 ~4000次/天">
+            <p class="hint">lbsyun.baidu.com → 控制台 → 应用管理 → 创建应用（服务端）</p>
+        </div>
+        <div class="field" style="padding-top:12px;border-top:1px solid var(--border)">
+            <label>🗺 腾讯地图 <span id="tencentStatus" style="font-weight:600;color:var(--accent)">已配置</span></label>
+            <input type="text" id="configTencentKey" placeholder="免费 100万次/月">
+            <p class="hint">lbs.qq.com → 控制台 → 应用管理 → 创建应用</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="hideConfigModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveConfig()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/app.js?v=2"></script>
+</body>
