@@ -55,20 +55,24 @@ BASE_DIR = Path(__file__).parent
 _providers_cache = {}
 
 def get_provider_instance(provider_name: str = None):
-    global _providers_caches_cache
+    global _providers_cache
     if provider_name is None:
         provider_name = "amap"
     
     if provider_name not in _providers_cache:
+        key = None
         if provider_name == "amap":
             key = get_amap_api_key()
         elif provider_name == "baidumap":
             key = get_baidu_api_key()
+        elif provider_name == "tencentmap":
+            key = get_tencent_api_key()
+        if not key:
+            _providers_cache[provider_name] = None
         else:
-            raise ValueError(f"Unknown provider: {provider_name}")
-        _providers_cache[provider_name] = create_provider(provider_name, key)
+            _providers_cache[provider_name] = create_provider(provider_name, key)
     
-    return _providers_cache[provider_name]
+    return _providers_cache.get(provider_name)
 
 # --- API ---
 
@@ -171,9 +175,37 @@ async def search_pois(params: SearchParams, request: Request = None):
                 if today >= limit_info["daily_searches"]:
                     return JSONResponse(status_code=429, content={"success": False, "error": f"今日搜索次数已用完 ({today}/{limit_info['daily_searches']})，升级会员可获更多"})
 
-    provider = get_provider_instance(params.provider or "amap")
+    provider_name = params.provider or "amap"
     try:
-        result = await provider.search(params)
+        all_items = []
+        seen_set = set()
+
+        if provider_name == "all":
+            # Search all configured providers, merge & deduplicate
+            providers_to_try = ["amap", "baidumap", "tencentmap"]
+            for pn in providers_to_try:
+                p = get_provider_instance(pn)
+                if not p:
+                    continue
+                try:
+                    r = await p.search(params)
+                    for c in r.data:
+                        key = c.id or c.company_name
+                        if key and key not in seen_set:
+                            seen_set.add(key)
+                            all_items.append(c)
+                        elif not key:
+                            all_items.append(c)
+                except Exception:
+                    continue
+            from providers.base import SearchResult
+            result = SearchResult(data=all_items, total=len(all_items))
+        else:
+            provider = get_provider_instance(provider_name)
+            if not provider:
+                return JSONResponse(status_code=400, content={"success": False, "error": f"数据源 {provider_name} 未配置 API Key"})
+            result = await provider.search(params)
+
         # Parse phone numbers
         data_list = []
         for c in result.data:
@@ -188,7 +220,7 @@ async def search_pois(params: SearchParams, request: Request = None):
                 "industry": c.industry,
                 "province": c.province,
                 "city": c.city,
-                    "district": c.district,
+                "district": c.district,
                 "credit_code": c.credit_code,
                 "legal_person": c.legal_person,
                 "reg_capital": c.reg_capital,

@@ -2,6 +2,7 @@
  * 商家 POI 信息查询工具 — 高德地图
  */
 const API_BASE = '';
+const MUNICIPALITIES = ['北京市', '天津市', '上海市', '重庆市'];
 
 const state = {
     config: { provider: 'amap', api_configured: false, max_results: 100, page_size: 20 },
@@ -75,10 +76,11 @@ document.addEventListener('change', function(e) {
 });
 
 function populateSelects() {
-    const provHtml = '<option value="">全部省份</option>' +
+    const provHtml = '<option value="">省份</option>' +
         state.regions.provinces.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
     $('filterProvince').innerHTML = provHtml;
-    $('filterCity').innerHTML = '<option value="">全部城市</option>';
+    $('filterCity').innerHTML = '<option value="">城市</option>';
+    $('filterDistrict').innerHTML = '<option value="">区县</option>';
 }
 
 function updatePoiTypeSelect() {
@@ -89,12 +91,26 @@ function updatePoiTypeSelect() {
 
 function updateCityOptions() {
     const sel = $('filterCity');
+    const distSel = $('filterDistrict');
     const provinceName = $('filterProvince').value;
-    sel.innerHTML = '<option value="">全部城市</option>';
+    
+    // Default options
+    sel.innerHTML = '<option value="">城市</option>';
+    distSel.innerHTML = '<option value="">区县</option>';
+    
     if (!provinceName) return;
     const p = state.regions.provinces.find(x => x.name === provinceName);
-    if (p && p.cities) {
-        sel.innerHTML += p.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (!p || !p.cities) return;
+    
+    if (MUNICIPALITIES.includes(provinceName)) {
+        // Municipality: cities ARE districts, move them to district level
+        sel.innerHTML = '<option value="' + provinceName + '">' + provinceName + '</option>';
+        distSel.innerHTML = '<option value="">区县</option>' +
+            p.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+    } else {
+        // Regular province: show cities normally
+        sel.innerHTML = '<option value="">城市</option>' +
+            p.cities.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 }
 
@@ -111,12 +127,14 @@ async function doSearch(page) {
     const kwText = $('filterKeywords')?.value.trim() || '';
     const extraKeywords = kwText ? kwText.split('\n').map(s => s.trim()).filter(s => s.length > 0) : [];
 
+    const district = document.getElementById('filterDistrict')?.value || '';
     const params = {
-        provider: $('filterProvider')?.value || 'amap',
+        provider: 'all',
         keyword: keyword,
         keywords: extraKeywords,
         province: $('filterProvince').value,
         city: $('filterCity').value,
+        district: district,
         industry: $('filterPoiType').value,
         reg_capital_min: null, reg_capital_max: null,
         reg_date_start: '', reg_date_end: '',
@@ -641,23 +659,36 @@ function exportAllResults() {
 // --- Nearby Search ---
 let nearbyMode = false;
 
-function toggleNearby() {
-    nearbyMode = !nearbyMode;
-    const hero = document.getElementById('heroSearch');
-    const nearby = document.getElementById('nearbyPanel');
-    const btn = document.getElementById('btnNearby');
+function switchSearchMode(mode) {
+    const areaEl = document.getElementById('areaSearchMode');
+    const nearbyEl = document.getElementById('nearbySearchMode');
+    const tabArea = document.getElementById('modeTabArea');
+    const tabNearby = document.getElementById('modeTabNearby');
     
-    if (nearbyMode) {
-        if (hero) hero.style.display = 'none';
-        if (nearby) nearby.classList.add('show');
-        btn.textContent = '📍 返回搜索';
-        btn.style.borderColor = 'var(--accent)';
+    if (mode === 'nearby') {
+        if (areaEl) areaEl.style.display = 'none';
+        if (nearbyEl) nearbyEl.style.display = 'block';
+        if (tabArea) tabArea.classList.remove('active');
+        if (tabNearby) tabNearby.classList.add('active');
     } else {
-        if (hero) hero.style.display = 'block';
-        if (nearby) nearby.classList.remove('show');
-        btn.textContent = '📍 周边';
-        btn.style.borderColor = '';
+        if (areaEl) areaEl.style.display = 'block';
+        if (nearbyEl) nearbyEl.style.display = 'none';
+        if (tabArea) tabArea.classList.add('active');
+        if (tabNearby) tabNearby.classList.remove('active');
     }
+}
+
+function setDistance(val) {
+    document.querySelectorAll('.dist-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.dist-btn[data-dist="' + val + '"]')?.classList.add('active');
+    document.getElementById('nearbyRadius').value = val;
+}
+
+let nearbyMode = false;
+function toggleNearby() {
+    // Legacy - redirect to mode switch
+    switchSearchMode(nearbyMode ? 'area' : 'nearby');
+    nearbyMode = !nearbyMode;
 }
 
 async function doNearbySearch() {
@@ -685,7 +716,7 @@ async function doNearbySearch() {
         btn.innerHTML = '<span class="spinner"></span> 搜索周边商家...';
         
         // Step 2: Search nearby
-        const provider = (document.getElementById('filterProvider')?.value) || 'amap';
+        const provider = 'amap'; // Nearby search uses default provider
         const searchRes = await fetch('/api/nearby-search', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
