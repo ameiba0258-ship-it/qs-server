@@ -521,8 +521,18 @@ async function submitLogin() {
             localStorage.setItem('qs_token', d.token);
             localStorage.setItem('qs_user', JSON.stringify(d));
             localStorage.setItem('qs_saved_email', email);
-            showToast('登录成功，正在跳转…', 'success');
-            setTimeout(() => { window.location.href = '/search'; }, 400);
+            // Submit form to trigger browser password save prompt
+            const _pwForm = document.createElement('form');
+            _pwForm.method = 'POST';
+            _pwForm.action = '/api/auth/password-save-redirect';
+            _pwForm.style.display = 'none';
+            const _e1 = document.createElement('input');
+            _e1.type = 'email'; _e1.name = 'email'; _e1.value = email;
+            const _e2 = document.createElement('input');
+            _e2.type = 'password'; _e2.name = 'password'; _e2.value = pw;
+            _pwForm.appendChild(_e1); _pwForm.appendChild(_e2);
+            document.body.appendChild(_pwForm);
+            _pwForm.submit();
         } else { showAlert(d.error || '登录失败', 'error'); btn.disabled=false; btn.innerHTML='登录'; }
     } catch(e) { showAlert('网络错误: '+e.message, 'error'); btn.disabled=false; btn.innerHTML='登录'; }
 }
@@ -548,8 +558,17 @@ async function submitRegister() {
             localStorage.setItem('qs_token', d.token);
             localStorage.setItem('qs_user', JSON.stringify(d));
             localStorage.setItem('qs_saved_email', email);
-            showToast('注册成功，正在跳转…', 'success');
-            setTimeout(() => { window.location.href = '/search'; }, 400);
+            const _pwForm2 = document.createElement('form');
+            _pwForm2.method = 'POST';
+            _pwForm2.action = '/api/auth/password-save-redirect';
+            _pwForm2.style.display = 'none';
+            const _e3 = document.createElement('input');
+            _e3.type = 'email'; _e3.name = 'email'; _e3.value = email;
+            const _e4 = document.createElement('input');
+            _e4.type = 'password'; _e4.name = 'password'; _e4.value = pw;
+            _pwForm2.appendChild(_e3); _pwForm2.appendChild(_e4);
+            document.body.appendChild(_pwForm2);
+            _pwForm2.submit();
         } else { showAlert(d.error || '注册失败', 'error'); btn.disabled=false; btn.innerHTML='创建账号'; }
     } catch(e) { showAlert('网络错误: '+e.message, 'error'); btn.disabled=false; btn.innerHTML='创建账号'; }
 }

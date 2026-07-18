@@ -1220,6 +1220,15 @@ async def get_avatar(user_id: int):
     return JSONResponse(status_code=404, content={"error": "Avatar not found"})
 
 
+
+
+@app.post("/api/auth/password-save-redirect")
+async def password_save_redirect():
+    """Redirect to /search after form POST (triggers browser password save detection)."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/search", status_code=303)
+
+
 if __name__ == "__main__":
     import uvicorn
     print("=" * 50)
