@@ -111,8 +111,6 @@ body {
     gap: 8px;
 }
 
-#userInfo { display: inline-flex; align-items: center; gap: 6px; }
-
 #loginLink {
     font-size: 13px;
     font-weight: 500;
@@ -125,18 +123,6 @@ body {
 
 #loginLink:hover { background: #eff6ff; }
 
-#profileLink {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-decoration: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-
-#profileLink:hover { color: var(--text); background: #f1f5f9; }
-
 .btn-upgrade-nav {
     font-size: 12px;
     font-weight: 600;
@@ -146,6 +132,170 @@ body {
     padding: 6px 14px;
     border-radius: 8px;
     transition: background 0.2s;
+}
+
+/* User Dropdown Menu */
+.login-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: #94a3b8;
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.login-link:hover {
+    color: #1e293b;
+    background: rgba(255,255,255,0.1);
+}
+
+.user-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.user-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    font-size: 13px;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.user-trigger:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.user-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #eff6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.user-name {
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chevron-down {
+    color: #94a3b8;
+    transition: transform 0.2s;
+}
+
+.user-trigger.active .chevron-down {
+    transform: rotate(180deg);
+}
+
+/* Dropdown Panel */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.2s;
+    z-index: 300;
+    overflow: hidden;
+}
+
+.user-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    padding: 14px 16px 10px;
+}
+
+.dropdown-email {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-tier {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #475569;
+    text-decoration: none;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+.dropdown-item.logout-item:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.dropdown-icon {
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.usage-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.usage-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #059669;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .user-name { display: none; }
+    .user-trigger { padding: 5px; }
+    #apiBadge { display: none; }
 }
 
 .btn-upgrade-nav:hover { background: #047857; }
@@ -835,11 +985,42 @@ body {
             <a href="/membership">会员</a>
         </nav>
         <div class="topbar-right">
-            <span id="apiBadge" class="api-badge unconfigured" onclick="showConfigModal()">未配置 API</span>
-            <span id="userInfo"></span>
-            <a href="/profile" id="profileLink" style="display:none">个人中心</a>
-            <a href="/" id="loginLink">登录</a>
+            <!-- API Status Badge -->
+            <span id="apiBadge" class="api-badge unconfigured" onclick="showConfigModal()" title="点击配置API">未配置 API</span>
+            
+            <!-- Logged Out -->
+            <a href="/" id="loginLink" class="login-link">登录</a>
             <a href="/membership" class="btn-upgrade-nav">🏆 升级会员</a>
+            
+            <!-- Logged In: User Dropdown -->
+            <div class="user-menu-wrap" id="userMenuWrap" style="display:none">
+                <button class="user-trigger" onclick="toggleDropdown(event)" id="userTrigger">
+                    <span class="user-avatar-small" id="userAvatarSmall">👤</span>
+                    <span class="user-name" id="userDisplayName">用户</span>
+                    <svg class="chevron-down" width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="dropdown-header">
+                        <div class="dropdown-email" id="dropdownEmail">用户</div>
+                        <div class="dropdown-tier" id="dropdownTier">免费版</div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="/profile" class="dropdown-item">
+                        <span class="dropdown-icon">⚙</span>
+                        个人中心
+                    </a>
+                    <div class="dropdown-item usage-item">
+                        <span class="dropdown-icon">📊</span>
+                        <span>今日使用</span>
+                        <span class="usage-count" id="dropdownUsage">0 / 50 次</span>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="javascript:logout()" class="dropdown-item logout-item">
+                        <span class="dropdown-icon">🚪</span>
+                        退出登录
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </header>

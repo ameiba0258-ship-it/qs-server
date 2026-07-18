@@ -162,7 +162,90 @@ adminLogin = async function() {
     await origLogin();
     loadPaymentConfig();
     loadPendingPayments();
+    loadEmailConfig();
 };
+
+// --- SMTP Email Config ---
+async function loadEmailConfig() {
+    try {
+        const r = await fetch('/api/admin/email-config', {
+            headers: {'Authorization':'Bearer '+token}
+        });
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('smtpHost').value = d.config.host || '';
+            document.getElementById('smtpPort').value = d.config.port || 587;
+            document.getElementById('smtpUser').value = d.config.username || '';
+            document.getElementById('smtpFrom').value = d.config.from_addr || '';
+            document.getElementById('smtpStatus').textContent = d.config.configured ? '✅ 已配置' : '❌ 未配置';
+            document.getElementById('smtpStatus').style.color = d.config.configured ? '#059669' : '#dc2626';
+        }
+    } catch(e) {}
+}
+
+async function saveEmailConfig() {
+    const body = {
+        host: document.getElementById('smtpHost').value.trim(),
+        port: parseInt(document.getElementById('smtpPort').value) || 587,
+        username: document.getElementById('smtpUser').value.trim(),
+        password: document.getElementById('smtpPw').value,
+        from_addr: document.getElementById('smtpFrom').value.trim(),
+    };
+    if (!body.host || !body.username) { alert('请填写 SMTP 服务器和用户名'); return; }
+    try {
+        const r = await fetch('/api/admin/email-config', {
+            method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+            body: JSON.stringify(body)
+        });
+        const d = await r.json();
+        alert(d.message || (d.success ? '已保存' : '保存失败'));
+        if (d.success) loadEmailConfig();
+    } catch(e) { alert('保存失败'); }
+}
+
+function fillSmtpPreset(val) {
+    const presets = {
+        qq: {host:'smtp.qq.com', port:587},
+        '163': {host:'smtp.163.com', port:25},
+        '126': {host:'smtp.126.com', port:25},
+        exmail: {host:'smtp.exmail.qq.com', port:465},
+        gmail: {host:'smtp.gmail.com', port:587},
+        outlook: {host:'smtp-mail.outlook.com', port:587},
+    };
+    const p = presets[val];
+    if (p) {
+        document.getElementById('smtpHost').value = p.host;
+        document.getElementById('smtpPort').value = p.port;
+    }
+}
 </script>
+
+<!-- SMTP Email Config Card -->
+<div class="card" style="margin-top:16px;padding:16px;background:#fff;border-radius:8px;box-shadow:var(--shadow)">
+    <h3 style="font-size:15px;margin-bottom:12px">📧 邮件服务配置 <span id="smtpStatus" style="font-size:12px;font-weight:400">❌ 未配置</span></h3>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">配置 SMTP 后可支持「发送到邮箱」功能。</p>
+    <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:var(--gray-500);display:block;margin-bottom:4px">常用邮箱服务商</label>
+        <select onchange="fillSmtpPreset(this.value)" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px">
+            <option value="">— 选择预设 —</option>
+            <option value="qq">QQ邮箱 smtp.qq.com:587</option>
+            <option value="163">163邮箱 smtp.163.com:25</option>
+            <option value="126">126邮箱 smtp.126.com:25</option>
+            <option value="exmail">企业微信 smtp.exmail.qq.com:465</option>
+            <option value="gmail">Gmail smtp.gmail.com:587</option>
+            <option value="outlook">Outlook smtp-mail.outlook.com:587</option>
+        </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+        <div><label style="font-size:12px;color:var(--gray-500)">SMTP 服务器</label><input type="text" id="smtpHost" placeholder="smtp.qq.com" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>
+        <div><label style="font-size:12px;color:var(--gray-500)">端口</label><input type="number" id="smtpPort" value="587" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>
+        <div><label style="font-size:12px;color:var(--gray-500)">邮箱账号</label><input type="text" id="smtpUser" placeholder="your@qq.com" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>
+        <div><label style="font-size:12px;color:var(--gray-500)">邮箱密码/授权码</label><input type="password" id="smtpPw" placeholder="SMTP 授权码" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>
+        <div style="grid-column:span 2"><label style="font-size:12px;color:var(--gray-500)">发件人地址（可选）</label><input type="text" id="smtpFrom" placeholder="留空默认使用邮箱账号" style="width:100%;padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>
+    </div>
+    <p style="font-size:11px;color:var(--gray-400);margin-top:6px">💡 QQ邮箱需开启 SMTP 并生成授权码: 设置 → 账号 → POP3/IMAP/SMTP 服务</p>
+    <button class="btn btn-sm btn-primary" onclick="saveEmailConfig()" style="margin-top:8px">保存邮件配置</button>
+</div>
+
 </body>
 </html>
