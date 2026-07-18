@@ -329,7 +329,7 @@ async function startBatchSearch() {
     const keyword = $('filterKeyword').value.trim();
     if (!keyword) { showToast('请输入关键词', 'error'); return; }
 
-    $('batchProgress').classList.remove('hidden');
+    $('batchProgress').classList.add('show');
     $('batchProgressText').textContent = '准备中...';
     $('batchProgressFill').style.width = '0%';
     $('batchProgressFill').classList.remove('complete');
@@ -592,7 +592,7 @@ function exportAllResults() {
 
     // 展开并滚动到进度区域
     const prog = document.getElementById('batchProgress');
-    prog.classList.remove('hidden');
+    prog.classList.add('show');
     document.getElementById('batchProgressText').textContent = '正在拉取全部数据（深度搜索模式，可能较慢）...';
     document.getElementById('batchProgressFill').style.width = '0%';
     document.getElementById('batchProgressFill').classList.remove('complete');
@@ -608,19 +608,19 @@ let nearbyMode = false;
 
 function toggleNearby() {
     nearbyMode = !nearbyMode;
-    const panel = document.getElementById('nearbyPanel');
-    const filters = document.querySelector('.filter-section.collapsible') || document.querySelector('.filter-section');
+    const hero = document.getElementById('heroSearch');
+    const nearby = document.getElementById('nearbyPanel');
     const btn = document.getElementById('btnNearby');
     
     if (nearbyMode) {
-        panel.style.display = 'block';
-        if (filters) filters.style.display = 'none';
-        btn.textContent = '📍 周边搜索中';
-        btn.style.borderColor = 'var(--success)';
+        if (hero) hero.style.display = 'none';
+        if (nearby) nearby.classList.add('show');
+        btn.textContent = '📍 返回搜索';
+        btn.style.borderColor = 'var(--accent)';
     } else {
-        panel.style.display = 'none';
-        if (filters) filters.style.display = 'block';
-        btn.textContent = '📍 周边搜索';
+        if (hero) hero.style.display = 'block';
+        if (nearby) nearby.classList.remove('show');
+        btn.textContent = '📍 周边';
         btn.style.borderColor = '';
     }
 }
@@ -710,6 +710,15 @@ function setupMobile() {
     window.addEventListener('resize', function() {
         if (state.results.data && state.results.data.length > 0) renderResults();
     });
+}
+
+function toggleAdvanced() {
+    const panel = document.getElementById('advPanel');
+    const link = document.getElementById('advToggleLink');
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    panel.classList.toggle('open');
+    if (link) link.textContent = isOpen ? '+ 多关键词搜索（每行一个）' : '− 收起高级筛选';
 }
 
 document.addEventListener('DOMContentLoaded', init);
