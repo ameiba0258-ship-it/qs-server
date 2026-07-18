@@ -197,11 +197,7 @@ function renderResults() {
     empty.style.display = 'none';
     if (actions) actions.style.display = 'flex';
 
-    const mobileOnly = document.getElementById('filterMobileOnly')?.checked;
-    let filtered = state.results.data;
-    if (mobileOnly) {
-        filtered = filtered.filter(item => item.mobile_phone);
-    }
+    let filtered = state.results.data.filter(item => item.mobile_phone);
     tbody.innerHTML = filtered.map((item, i) => `
         <tr>
             <td title="${esc(item.company_name)}"><strong>${esc(item.company_name)}</strong></td>
@@ -244,29 +240,21 @@ function renderPagination() {
 }
 
 function updateHeader() {
-    const mobileOnly = document.getElementById('filterMobileOnly')?.checked;
     const { total, page, page_size, data } = state.results;
     const start = data.length > 0 ? (page - 1) * page_size + 1 : 0;
     const end = Math.min(page * page_size, total);
     let info = total > 0
         ? `共 <strong>${total.toLocaleString()}</strong> 条，显示第 ${start}-${end} 条`
         : '暂无数据';
-    if (mobileOnly && data.length > 0) {
-        const mobileCount = data.filter(i => i.mobile_phone).length;
-        info += ` | 📱 有手机号: ${mobileCount} 条`;
-    }
     $('resultsInfo').innerHTML = info;
 }
 
 // --- Export Functions ---
 function exportCSV() {
-    const mobileOnly = document.getElementById('filterMobileOnly')?.checked;
     let data = state.results.data;
     if (!data || data.length === 0) { showToast('没有数据可导出', 'error'); return; }
-    if (mobileOnly) {
-        data = data.filter(item => item.mobile_phone);
-        if (data.length === 0) { showToast('没有有手机号的数据', 'error'); return; }
-    }
+    data = data.filter(item => item.mobile_phone);
+    if (data.length === 0) { showToast('没有有手机号的数据', 'error'); return; }
 
     const headers = ['商家名称', '经营类型', '手机号', '座机', '地址', '城市', '区县', '省份'];
     const rows = data.map(item => [
@@ -300,13 +288,10 @@ function exportCSV() {
 }
 
 function copyTable() {
-    const mobileOnly = document.getElementById('filterMobileOnly')?.checked;
     let data = state.results.data;
     if (!data || data.length === 0) { showToast('没有数据可复制', 'error'); return; }
-    if (mobileOnly) {
-        data = data.filter(item => item.mobile_phone);
-        if (data.length === 0) { showToast('没有有手机号的数据', 'error'); return; }
-    }
+    data = data.filter(item => item.mobile_phone);
+    if (data.length === 0) { showToast('没有有手机号的数据', 'error'); return; }
 
     const headers = ['商家名称', '经营类型', '手机号', '座机', '地址', '城市', '区县', '省份'];
     const rows = data.map(item => [
