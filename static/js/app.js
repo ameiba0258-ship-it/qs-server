@@ -554,6 +554,9 @@ async function checkAuth() {
             if (document.getElementById('loginLink')) {
                 document.getElementById('loginLink').style.display = 'none';
             }
+            if (document.getElementById('profileLink')) {
+                document.getElementById('profileLink').style.display = 'inline';
+            }
         } else {
             localStorage.removeItem('qs_token');
             window.location.href = '/';

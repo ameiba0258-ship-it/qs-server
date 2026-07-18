@@ -236,12 +236,24 @@ async def batch_search(params: SearchParams, request: Request = None):
                 if today >= limit_info["daily_searches"]:
                     return JSONResponse(status_code=429, content={"success": False, "error": f"批量搜索次数已用完 ({today}/{limit_info['daily_searches']})"})
 
+    # Check deep_search permission
+    deep_search_allowed = True
+    _batch_user = None
+    if request:
+        _token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if _token:
+            _u = auth_db.validate_token(_token)
+            if _u:
+                _batch_user = _u
+                _tier_info = auth_db.TIER_LIMITS.get(_u["tier"], auth_db.TIER_LIMITS["free"])
+                deep_search_allowed = _tier_info.get("deep_search", False)
+
     task_id = uuid.uuid4().hex[:12]
     tasks[task_id] = {
         "status": "running", "progress": 0, "total": 0,
         "count": 0, "started_at": time.time(), "error": None, "filepath": None,
     }
-    asyncio.create_task(_run_batch_search(task_id, params))
+    asyncio.create_task(_run_batch_search(task_id, params, deep_search_allowed))
     return {"task_id": task_id}
 
 def _merge_dedup(results_lists, seen_ids=None):
@@ -302,12 +314,14 @@ def _load_regions():
         return json.loads(rpath.read_text(encoding="utf-8")).get("provinces", [])
     return []
 
-async def _run_single_keyword_search(provider, params, task_id, provinces, MUNICIPALITIES, MAX_DEEP, keyword_label=""):
+async def _run_single_keyword_search(provider, params, task_id, provinces, MUNICIPALITIES, MAX_DEEP, keyword_label="", deep_search_allowed=True):
     """Run a single keyword search (could be deep or regular). Returns data list."""
     target_city = params.city or params.province
     all_data = None
 
-    if target_city in MUNICIPALITIES:
+    can_deep = deep_search_allowed
+
+    if target_city in MUNICIPALITIES and can_deep:
         districts = []
         for p in provinces:
             if p["name"] == target_city:
@@ -319,7 +333,7 @@ async def _run_single_keyword_search(provider, params, task_id, provinces, MUNIC
             reg_cb = lambda prog, total: tasks[task_id].update(progress=prog, total=total, count=prog)
             all_data = await provider.batch_search(params, max_results=settings.MAX_RESULTS, progress_callback=reg_cb)
 
-    elif params.province and not params.city:
+    elif params.province and not params.city and can_deep:
         cities = []
         for p in provinces:
             if p["name"] == params.province:
@@ -337,7 +351,7 @@ async def _run_single_keyword_search(provider, params, task_id, provinces, MUNIC
 
     return all_data or []
 
-async def _run_batch_search(task_id: str, params: SearchParams):
+async def _run_batch_search(task_id: str, params: SearchParams, deep_search_allowed: bool = True):
     provider = get_provider_instance(params.provider or "amap")
     MUNICIPALITIES = {"北京市", "天津市", "上海市", "重庆市"}
     MAX_DEEP = 3000
@@ -371,7 +385,7 @@ async def _run_batch_search(task_id: str, params: SearchParams):
                     page=1, page_size=params.page_size
                 )
 
-                kw_results = await _run_single_keyword_search(provider, kw_params, task_id, provinces, MUNICIPALITIES, MAX_DEEP)
+                kw_results = await _run_single_keyword_search(provider, kw_params, task_id, provinces, MUNICIPALITIES, MAX_DEEP, deep_search_allowed=deep_search_allowed)
 
                 for item in kw_results:
                     key = item.id or item.company_name
@@ -389,7 +403,7 @@ async def _run_batch_search(task_id: str, params: SearchParams):
             )
         else:
             # Single keyword mode
-            all_data = await _run_single_keyword_search(provider, params, task_id, provinces, MUNICIPALITIES, MAX_DEEP)
+            all_data = await _run_single_keyword_search(provider, params, task_id, provinces, MUNICIPALITIES, MAX_DEEP, deep_search_allowed=deep_search_allowed)
 
         # --- Export ---
         if not all_data:
@@ -485,6 +499,15 @@ async def serve_js(filename: str):
 # --- Auth & Login Routes ---
 
 
+
+@app.get("/profile")
+async def profile_page():
+    """User profile and settings page."""
+    profile_path = BASE_DIR / "static" / "profile.html"
+    if profile_path.exists():
+        return HTMLResponse(profile_path.read_text(encoding="utf-8"))
+    return {"message": "Profile page not found"}
+
 @app.get("/search")
 async def serve_search():
     """Main search interface — protected by frontend auth check."""
@@ -562,6 +585,50 @@ async def email_login(data: dict):
         return {"success": False, "error": "邮箱和密码不能为空"}
     import auth_db
     result = auth_db.login_by_email(email, password)
+    return result
+
+
+
+
+@app.post("/api/auth/change-password")
+async def change_password(data: dict, request: Request):
+    """Authenticated user changes their password."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    old_password = data.get("old_password", "")
+    new_password = data.get("new_password", "")
+    if not old_password or not new_password:
+        return {"success": False, "error": "请填写原密码和新密码"}
+    if len(new_password) < 6:
+        return {"success": False, "error": "新密码至少6位"}
+    import auth_db
+    user = auth_db.validate_token(token)
+    if not user:
+        return {"success": False, "error": "登录已过期"}
+    result = auth_db.change_password(user["id"], old_password, new_password)
+    if result.get("success"):
+        result["message"] = "密码修改成功，请重新登录"
+    return result
+
+
+@app.post("/api/auth/admin/reset-password")
+async def admin_reset_password(data: dict, request: Request):
+    """Admin resets a user's password."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return {"success": False, "error": "未登录"}
+    import auth_db
+    admin_user = auth_db.validate_token(token)
+    if not admin_user or admin_user["tier"] != "admin":
+        return {"success": False, "error": "无权限"}
+    username = data.get("username", "").strip()
+    new_password = data.get("new_password", "")
+    if not username or not new_password:
+        return {"success": False, "error": "请填写用户名和新密码"}
+    if len(new_password) < 6:
+        return {"success": False, "error": "新密码至少6位"}
+    result = auth_db.admin_reset_password(username, new_password)
     return result
 
 

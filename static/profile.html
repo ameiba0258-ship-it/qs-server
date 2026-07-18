@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人中心 · 商家 POI 查询</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: #f0f2f5;
+    color: #1f2937;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* === Header === */
+.app-header {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.app-header h1 { font-size: 18px; font-weight: 600; color: #111827; }
+.app-header .nav-links { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+.app-header .nav-links a { font-size: 13px; color: #6b7280; text-decoration: none; transition: color 0.2s; }
+.app-header .nav-links a:hover { color: #2563eb; }
+.app-header .nav-links a.active { color: #111827; font-weight: 600; }
+
+/* === Page === */
+.page-wrap {
+    max-width: 640px;
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+/* === Card === */
+.card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+.card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #111827;
+}
+
+/* === Info rows === */
+.info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+}
+
+.info-row:last-of-type { border-bottom: none; }
+.info-row .label { color: #6b7280; }
+.info-row .value { font-weight: 500; color: #111827; }
+
+/* === Plan badge === */
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge-free { background: #f3f4f6; color: #6b7280; }
+.badge-premium { background: #eff6ff; color: #2563eb; }
+.badge-enterprise { background: #ecfdf5; color: #059669; }
+.badge-admin { background: #fef2f2; color: #dc2626; }
+
+/* === Usage bar === */
+.usage-bar {
+    width: 100%;
+    height: 6px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+.usage-bar .fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s;
+}
+.usage-bar .fill.safe { background: #2563eb; }
+.usage-bar .fill.warn { background: #d97706; }
+.usage-bar .fill.danger { background: #dc2626; }
+
+.usage-text {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* === Form === */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+.form-group input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1f2937;
+    background: #f9fafb;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.form-group input:focus { border-color: #2563eb; background: #fff; }
+
+.btn-primary {
+    padding: 10px 24px;
+    background: #111827;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-primary:hover { background: #1f2937; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline {
+    padding: 10px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.btn-outline:hover { background: #e5e7eb; }
+
+.alert {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+}
+.alert.error { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+.alert.success { display: block; background: #ecfdf5; color: #059669; border: 1px solid #6ee7b7; }
+
+@media (max-width: 480px) {
+    .page-wrap { margin: 20px auto; }
+    .card { padding: 24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <h1>📍 商家 POI 查询</h1>
+    <div class="nav-links">
+        <a href="/search">查询</a>
+        <a href="/profile" class="active">个人中心</a>
+        <a href="/membership">会员</a>
+        <a href="javascript:logout()" style="color:#dc2626">退出</a>
+    </div>
+</header>
+
+<div class="page-wrap">
+
+    <!-- Loading -->
+    <div id="loadingState" style="text-align:center;padding:60px 0;color:#9ca3af">加载中...</div>
+
+    <!-- Profile Content -->
+    <div id="profileContent" style="display:none">
+
+        <!-- Account Info -->
+        <div class="card">
+            <h2>👤 账号信息</h2>
+            <div class="info-row">
+                <span class="label">邮箱</span>
+                <span class="value" id="pEmail">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">用户名</span>
+                <span class="value" id="pUsername">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">会员等级</span>
+                <span class="value" id="pTier">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">注册时间</span>
+                <span class="value" id="pCreated">-</span>
+            </div>
+        </div>
+
+        <!-- Usage -->
+        <div class="card">
+            <h2>📊 今日用量</h2>
+            <div id="pUsageInfo">
+                <div class="info-row">
+                    <span class="label">已用搜索次数</span>
+                    <span class="value" id="pUsed">-</span>
+                </div>
+                <div class="info-row" style="flex-direction:column;align-items:stretch;gap:4px">
+                    <div style="display:flex;justify-content:space-between">
+                        <span class="label">今日配额</span>
+                        <span class="value" id="pQuota">-</span>
+                    </div>
+                    <div class="usage-bar"><div class="fill" id="pUsageBar" style="width:0%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="card">
+            <h2>🔑 修改密码</h2>
+            <div class="alert" id="pwAlert"></div>
+            <div class="form-group">
+                <label>当前密码</label>
+                <input type="password" id="oldPw" placeholder="输入当前密码" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label>新密码</label>
+                <input type="password" id="newPw" placeholder="至少 6 位" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label>确认新密码</label>
+                <input type="password" id="confirmPw" placeholder="再次输入新密码">
+            </div>
+            <button class="btn-primary" id="changePwBtn" onclick="changePassword()">修改密码</button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+// === Utils ===
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function showAlert(msg, type) {
+    const el = document.getElementById('pwAlert');
+    el.textContent = msg;
+    el.className = 'alert ' + type;
+}
+
+function logout() {
+    localStorage.removeItem('qs_token');
+    localStorage.removeItem('qs_user');
+    window.location.href = '/';
+}
+
+function getToken() { return localStorage.getItem('qs_token'); }
+
+// === Load profile ===
+async function loadProfile() {
+    const token = getToken();
+    if (!token) { window.location.href = '/'; return; }
+
+    document.getElementById('loadingState').textContent = '加载中...';
+
+    try {
+        const r = await fetch('/api/auth/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+        const d = await r.json();
+
+        if (!d.success) {
+            localStorage.removeItem('qs_token');
+            window.location.href = '/';
+            return;
+        }
+
+        const u = d.user;
+
+        // Account info
+        document.getElementById('pEmail').textContent = esc(u.username);
+        document.getElementById('pUsername').textContent = esc(u.username);
+        
+        // Tier badge
+        const tierLabels = { free: '免费版', premium: '会员版', enterprise: '企业版', admin: '管理员' };
+        const tierBadges = { free: 'badge-free', premium: 'badge-premium', enterprise: 'badge-enterprise', admin: 'badge-admin' };
+        document.getElementById('pTier').innerHTML = '<span class="badge ' + (tierBadges[u.tier] || 'badge-free') + '">' + (tierLabels[u.tier] || u.tier) + '</span>';
+
+        // Created date
+        document.getElementById('pCreated').textContent = u.created_at || '-';
+
+        // Usage
+        const used = u.today_searches || 0;
+        const limit = u.daily_limit || 50;
+        const pct = Math.min(100, (used / limit) * 100);
+        const remaining = limit - used;
+
+        document.getElementById('pUsed').textContent = used + ' 次';
+        document.getElementById('pQuota').textContent = remaining + ' / ' + (limit > 9999 ? '∞' : limit) + ' 次剩余';
+
+        const bar = document.getElementById('pUsageBar');
+        bar.style.width = pct + '%';
+        bar.className = 'fill';
+        if (pct >= 90) bar.classList.add('danger');
+        else if (pct >= 70) bar.classList.add('warn');
+        else bar.classList.add('safe');
+
+        // Show content
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('profileContent').style.display = 'block';
+
+    } catch(e) {
+        document.getElementById('loadingState').textContent = '加载失败，请刷新重试';
+    }
+}
+
+// === Change password ===
+async function changePassword() {
+    const oldPw = document.getElementById('oldPw').value;
+    const newPw = document.getElementById('newPw').value;
+    const confirmPw = document.getElementById('confirmPw').value;
+
+    showAlert('', '');
+
+    if (!oldPw) { showAlert('请输入当前密码', 'error'); return; }
+    if (!newPw) { showAlert('请输入新密码', 'error'); return; }
+    if (newPw.length < 6) { showAlert('新密码至少 6 位', 'error'); return; }
+    if (newPw !== confirmPw) { showAlert('两次密码不一致', 'error'); return; }
+
+    const btn = document.getElementById('changePwBtn');
+    btn.disabled = true;
+    btn.textContent = '修改中...';
+
+    try {
+        const r = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify({ old_password: oldPw, new_password: newPw })
+        });
+        const d = await r.json();
+        if (d.success) {
+            showAlert('✅ 密码修改成功，请重新登录', 'success');
+            localStorage.setItem('qs_token', d.token); // Use new token
+            document.getElementById('oldPw').value = '';
+            document.getElementById('newPw').value = '';
+            document.getElementById('confirmPw').value = '';
+        } else {
+            showAlert(d.error || '修改失败', 'error');
+        }
+    } catch(e) {
+        showAlert('网络错误: ' + e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '修改密码';
+}
+
+// === Init ===
+loadProfile();
+</script>
+</body>
+</html>

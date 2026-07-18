@@ -360,4 +360,47 @@ def revoke_api_token(token_id: int) -> bool:
 _init_conn = _get_db()
 _init_conn.execute("CREATE TABLE IF NOT EXISTS api_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, owner TEXT, tier TEXT DEFAULT 'free', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_used TIMESTAMP, is_active INTEGER DEFAULT 1)")
 _init_conn.commit()
+
+
+def change_password(user_id, old_password, new_password):
+    """Change password for authenticated user. Returns dict."""
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row:
+            return {"success": False, "error": "用户不存在"}
+        # Verify old password
+        pw_hash, _ = _hash_password(old_password, row["salt"])
+        if pw_hash != row["password_hash"]:
+            return {"success": False, "error": "原密码错误"}
+        # Set new password
+        new_hash, new_salt = _hash_password(new_password)
+        token = uuid.uuid4().hex
+        conn.execute("UPDATE users SET password_hash=?, salt=?, token=? WHERE id=?",
+                     (new_hash, new_salt, token, user_id))
+        conn.commit()
+        return {"success": True, "token": token, "message": "密码修改成功"}
+    finally:
+        conn.close()
+
+
+def admin_reset_password(username_or_email, new_password):
+    """Admin force-resets a user's password. Returns dict."""
+    conn = _get_db()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE username=? OR email=?",
+            (username_or_email, username_or_email)
+        ).fetchone()
+        if not row:
+            return {"success": False, "error": "用户不存在"}
+        new_hash, new_salt = _hash_password(new_password)
+        token = uuid.uuid4().hex
+        conn.execute("UPDATE users SET password_hash=?, salt=?, token=? WHERE id=?",
+                     (new_hash, new_salt, token, row["id"]))
+        conn.commit()
+        return {"success": True, "message": f"密码已重置"}
+    finally:
+        conn.close()
+
 _init_conn.close()
